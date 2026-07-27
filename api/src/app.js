@@ -9,8 +9,10 @@ import { tenantResolver } from './middleware/tenant.js';
 import { storefrontRouter } from './modules/storefront/storefront.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { requireAuth, requireRole } from './middleware/auth.js';
+import { requireCompany } from './middleware/company.js';
 import { mediaRouter } from './modules/media/media.routes.js';
 import { platformRouter } from './modules/platform/platform.routes.js';
+import { catsRouter } from './modules/cats/cats.routes.js';
 
 export function createApp() {
   const app = express();
@@ -27,7 +29,8 @@ export function createApp() {
 
   app.use('/storefront', tenantResolver, storefrontRouter);
   app.use('/auth', authRouter);
-  app.use('/media', requireAuth, mediaRouter);
+  app.use('/media', requireAuth, requireCompany, mediaRouter);
+  app.use('/cats', requireAuth, requireCompany, catsRouter);
   app.use('/platform', requireAuth, requireRole('platform'), platformRouter);
 
   app.use((req, res) => {

@@ -106,3 +106,27 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** Every child table in `003_catalog.sql` references its parent by the composite key `(company_id, id)`, not by `id` alone — e.g. `variants_product_fk FOREIGN KEY (company_id, product_id) REFERENCES products(company_id, id)`. This required adding `UNIQUE (company_id, id)` to `products`, `cats`, `colls`, and to the pre-existing `media` table.
 **Why:** Oracle checks integrity constraints in the kernel, and that check is **not** subject to VPD. A plain `product_id NUMBER REFERENCES products(id)` would therefore happily accept another company's product id — the row's own `company_id` would pass the VPD check while its parent pointer crossed a tenant boundary. The composite form makes that combination unrepresentable in the database, which turns "a child never belongs to another company's parent" into a fourth enforcement layer instead of an application-level convention. `tests/isolation/catalog-schema.test.js` asserts all three variations (variant → foreign product, `prod_cats` → foreign category, `prod_imgs` → foreign media) fail with `ORA-02291`.
 **Alternatives considered:** Single-column FKs plus a service-layer "parent must be in my company" check (rejected — that check is exactly the kind of thing a future refactor forgets, and the whole point of the three-layer model is not to rely on remembering). Note the FK is unenforced when the child column is NULL (Oracle has no `MATCH PARTIAL`), which is the desired behaviour for nullable `parent_id`/`image_id`.
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 2 (applies to every Phase 1 module)
+**Decision:** Phase 1 services map rows to camelCase before returning them (`api/src/lib/rows.js`), so new endpoints emit `{ id, parentId, metaTitle }` rather than oracledb's `{ ID, PARENT_ID, META_TITLE }`. Phase 0's endpoints (`/auth`, `/media`, `/platform`) keep returning raw upper-case rows.
+**Why:** The tree endpoint made the inconsistency concrete — a nested node would have read `{ NAME, POSITION, children: [...] }`, mixing two conventions inside one object. Phase 1 adds far more surface (catalog, content, sections, translations) consumed by two new UIs, and camelCase JSON is what those clients expect. Phase 0's shape is deliberately left alone: the Super Admin SPA already reads `row.NAME`, so changing it would break shipped, working screens to satisfy tidiness. Values are passed through untouched — `NUMBER(1)` flags stay `0`/`1` rather than being guessed into booleans.
+**Alternatives considered:** Converting Phase 0's endpoints too (rejected for now — a UI-breaking change with no user-visible benefit; it can happen whenever the Super Admin SPA is next touched). Doing the mapping in each controller (rejected — it would be re-implemented per endpoint and drift).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 2
+**Decision:** Added `requireCompany` (`api/src/middleware/company.js`) in front of `/cats` **and retro-fitted it to `/media`**: a token whose `company_id` is null now gets 403 `COMPANY_REQUIRED` instead of reaching `withCompany(null)`.
+**Why:** Platform admins authenticate with `company_id: null`. Before this, a platform admin calling a company-owned route would pass `requireAuth`, reach `withCompany(null)`, and get a 500 from the pool helper's own guard — an internal error for what is really a permissions answer. `/media` had the same hole since Phase 0; it is one line to close and leaving it inconsistent with `/cats` would be worse. The sanctioned path is unchanged: impersonate the company first, which mints a token that does carry a `company_id`.
+**Alternatives considered:** Letting `withCompany` throw an `AppError(403)` instead (rejected — the pool helper is a database concern and shouldn't know about HTTP status codes).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 2
+**Decision:** `GET /cats` and `GET /cats/tree` are not paginated. They return every category for the company, capped at 1000 rows. Everything else in Phase 1 (`/products`, `/colls`, `/media`) uses offset pagination with `page`/`pageSize`, `pageSize` capped at 100, returning `{ rows, total, page, pageSize }`.
+**Why:** Task 2 asks for a tree read, and a tree cannot be assembled from a page of rows — the admin's drag-and-drop tree and the storefront's nav both need the complete set in one response. Stores have tens to low hundreds of categories, not thousands. The 1000-row cap keeps a pathological data set from returning something unbounded. Offset (rather than cursor) pagination elsewhere because admin tables need a total row count and page numbers, and storefront listings need crawlable `?page=2` URLs — neither of which a cursor gives cheaply.
+**Alternatives considered:** Paginating the flat list while leaving the tree unpaginated (rejected — two different contracts for the same resource, and no caller wants the paginated one); cursor pagination (rejected — no total, and opaque cursors are bad URLs for SEO).
