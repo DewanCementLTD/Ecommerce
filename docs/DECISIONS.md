@@ -31,6 +31,22 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 ---
 
 **Date:** 2026-07-27
+**Phase / Task:** phase-0, Task 2/3
+**Decision:** The migration-tracking table is named `migrations`, not `_migrations` as literally written in the brief.
+**Why:** Oracle rejects unquoted identifiers that start with `_` (`ORA-00911: invalid character`). Quoting it (`"_migrations"`) would force every reference, forever, to use exact-case double-quoted syntax — fragile and non-idiomatic for Oracle. `migrations` isn't on `CLAUDE.md`'s "final, do not rename" table list (that list only covers business-domain tables), so renaming this one piece of runner-internal bookkeeping was safe.
+**Alternatives considered:** Quoting `"_migrations"` everywhere (rejected — fragile, unusual for Oracle, no upside over a straightforward rename).
+
+---
+
+**Date:** 2026-07-27
+**Phase / Task:** phase-0, Task 2
+**Decision:** `ecomm_platform`'s password is limited to 24 characters, and every table it needs now has a matching `CREATE OR REPLACE SYNONYM ecomm_platform.<table> FOR <table>` (in `scripts/setup-platform-user.js`, alongside its grants).
+**Why:** Two Oracle-specific gotchas hit during Task 2, both confirmed by actually running the migration against the live instance rather than guessing: (1) `CREATE USER ... IDENTIFIED BY "password"` parses a double-quoted password as a quoted **identifier**, subject to Oracle's identifier length limit — a 32-character generated password raised `ORA-00972: identifier is too long`; 24 characters is comfortably under it. (2) Granting `SELECT/INSERT/UPDATE/DELETE` on `ecomm`'s tables to `ecomm_platform` does not let it use unqualified table names in its own queries — those resolve against its own (empty) schema first, raising `ORA-00942: table or view does not exist`. Synonyms fix this without forcing `withPlatform`-based repo code to write schema-qualified SQL that every other repo function doesn't need.
+**Alternatives considered:** Schema-qualifying every `withPlatform` query as `ecomm.<table>` (rejected — inconsistent with every other repo module, and hardcodes the app schema's name into query text). Quoting a longer password instead of shortening it (works, but shortening is simpler and there's no requirement for password length beyond "strong").
+
+---
+
+**Date:** 2026-07-27
 **Phase / Task:** phase-0, Task 6 (recorded ahead of time, applies when Task 6 is built)
 **Decision:** The `company_id`-path guard for media serving is enforced in Express for Phase 0, not at the Nginx layer.
 **Why:** Task 1's dev stack has no Nginx, and `00-SYSTEM-DESIGN.md §10` only places Nginx in the production environment. Building an Nginx-layer guard now means writing reverse-proxy config with nothing running locally to test it against.

@@ -12,8 +12,9 @@ Multi-tenant e-commerce platform. One codebase, one Oracle database, many client
 
 ```bash
 npm install
-cp .env.example .env   # already done on this machine — fill in your own values elsewhere
-npm run migrate        # from Task 3 onward
+cp .env.example .env          # already done on this machine — fill in your own values elsewhere
+npm run setup:platform-user   # one-time: creates the VPD-exempt DB user used by withPlatform()
+npm run migrate
 npm run dev
 ```
 
@@ -25,9 +26,12 @@ npm run dev
 |---|---|
 | `npm run dev` | Starts api + storefront + admin concurrently |
 | `npm test` | Runs each workspace's test suite |
-| `npm run test:isolation` | Runs the cross-tenant leak suite (release gate) — must be run against Oracle **Enterprise Edition** |
+| `npm run test:isolation` | Runs the cross-tenant leak suite (release gate) — needs a live DB connection, must be run against Oracle **Enterprise Edition** |
 | `npm run lint` | ESLint across the whole repo (one shared flat config) |
 | `npm run format` | Prettier write across the whole repo |
+| `npm run migrate` | Applies pending `.sql` files from `api/src/db/migrations/`, tracked in the `migrations` table |
+| `npm run migrate:dry` | Lists pending migrations without applying them |
+| `npm run setup:platform-user` | One-time (idempotent) bootstrap of the `ecomm_platform` VPD-exempt DB user + its table synonyms |
 
 ## Layout
 

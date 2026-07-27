@@ -15,7 +15,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "test": "npm run test --workspaces --if-present",
-    "test:isolation": "npm run test:isolation --workspace=api --if-present"
+    "test:isolation": "npm run test:isolation --workspace=api --if-present",
+    "migrate": "node scripts/migrate.js",
+    "migrate:dry": "node scripts/migrate.js --dry-run",
+    "setup:platform-user": "node scripts/setup-platform-user.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
