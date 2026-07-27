@@ -5,7 +5,7 @@ import { getRedis } from '../../lib/redis.js';
 import { generateTempPassword } from '../../lib/password.js';
 import { signAccessToken } from '../../lib/jwt.js';
 import { AppError } from '../../middleware/error.js';
-import { insertLog } from '../logs/logs.repo.js';
+import { insertLog, listLogs as listLogsRows } from '../logs/logs.repo.js';
 import {
   insertCompany,
   insertDomain,
@@ -202,6 +202,11 @@ export async function removeDomain({ domainId, actorAdminId, ip }) {
   });
 
   await getRedis().del(`host:${domain.HOST}`);
+}
+
+export async function listLogs({ page, pageSize, companyId, action }) {
+  const { rows, total } = await withPlatform((conn) => listLogsRows(conn, { page, pageSize, companyId, action }));
+  return { rows, total, page, pageSize };
 }
 
 export async function impersonate({ companyId, actorAdminId, ip }) {

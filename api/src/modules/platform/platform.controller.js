@@ -1,4 +1,10 @@
-import { createCompanySchema, updateCompanySchema, listQuerySchema, addDomainSchema } from './platform.schema.js';
+import {
+  createCompanySchema,
+  updateCompanySchema,
+  listQuerySchema,
+  addDomainSchema,
+  logsQuerySchema,
+} from './platform.schema.js';
 import * as platformService from './platform.service.js';
 
 export async function postCompany(req, res, next) {
@@ -86,6 +92,16 @@ export async function deleteDomain(req, res, next) {
       ip: req.ip,
     });
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getLogs(req, res, next) {
+  try {
+    const query = logsQuerySchema.parse(req.query);
+    const result = await platformService.listLogs(query);
+    res.json(result);
   } catch (err) {
     next(err);
   }

@@ -3,6 +3,9 @@ import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 
 oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
+// Without this, CLOB columns (logs.meta, settings.value, themes.tokens, roles.perms)
+// come back as Lob streams instead of strings.
+oracledb.fetchAsString = [oracledb.CLOB];
 
 let pool;
 let platformPool;

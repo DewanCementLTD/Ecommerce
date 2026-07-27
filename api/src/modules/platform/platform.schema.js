@@ -35,3 +35,10 @@ export const listQuerySchema = z.object({
 export const addDomainSchema = z.object({
   host: z.string().min(1).max(255),
 });
+
+export const logsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  companyId: z.coerce.number().int().optional(),
+  action: z.string().max(100).optional(),
+});

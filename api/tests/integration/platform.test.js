@@ -256,4 +256,17 @@ describe('company management', () => {
     });
     expect(logRows.length).toBeGreaterThan(0);
   });
+
+  it('GET /platform/logs lists this company\'s audit entries with meta as a JSON string', async () => {
+    const res = await request(createApp())
+      .get(`/platform/logs?companyId=${companyId}`)
+      .set('Authorization', `Bearer ${platformToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.rows.length).toBeGreaterThan(0);
+
+    const domainAdded = res.body.rows.find((row) => row.ACTION === 'domain_added');
+    expect(domainAdded).toBeDefined();
+    expect(typeof domainAdded.META).toBe('string');
+    expect(() => JSON.parse(domainAdded.META)).not.toThrow();
+  });
 });

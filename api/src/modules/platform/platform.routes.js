@@ -9,10 +9,12 @@ import {
   postDomain,
   deleteDomain,
   postImpersonate,
+  getLogs,
 } from './platform.controller.js';
 
 export const platformRouter = Router();
 
+platformRouter.get('/logs', getLogs);
 platformRouter.post('/companies', postCompany);
 platformRouter.get('/companies', getCompanies);
 platformRouter.get('/companies/:id', getCompany);
