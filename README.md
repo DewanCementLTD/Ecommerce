@@ -30,7 +30,7 @@ npm run dev
 |---|---|
 | `npm run dev` | Starts api + storefront + admin concurrently |
 | `npm test` | Runs each workspace's test suite |
-| `npm run test:isolation` | Runs the cross-tenant leak suite (release gate) — needs a live DB connection, must be run against Oracle **Enterprise Edition** |
+| `npm run test:isolation` | Runs the cross-tenant leak suite (release gate) — see below |
 | `npm run lint` | ESLint across the whole repo (one shared flat config) |
 | `npm run format` | Prettier write across the whole repo |
 | `npm run migrate` | Applies pending `.sql` files from `api/src/db/migrations/`, tracked in the `migrations` table |
@@ -38,6 +38,23 @@ npm run dev
 | `npm run setup:platform-user` | One-time (idempotent) bootstrap of the `ecomm_platform` VPD-exempt DB user + its table synonyms |
 | `npm run seed:platform-admin` | One-time (idempotent) bootstrap of the first Super Admin login (`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD`) |
 | `npm run seed:demo` | One-time (idempotent) two demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` |
+
+## The isolation suite is the release gate
+
+`npm run test:isolation` (`api/tests/isolation/`) seeds two companies and then, for every
+company-owned endpoint, attempts cross-company reads and writes as A against B's ids —
+expecting 404/403 every time, never data. It also asserts at the database level that a
+connection carrying company B's context cannot SELECT, UPDATE, DELETE, or INSERT company A's
+rows, using SQL with **no** `company_id` predicate of its own — so a pass proves Oracle VPD
+is doing the work, not just the repository layer's own `WHERE` clause.
+
+> **This suite must be run against Oracle Enterprise Edition, not XE.** XE has no VPD
+> (`DBMS_RLS`), so on XE the database-level assertions would be testing nothing while still
+> reporting green — the most dangerous possible outcome for a tenant-isolation gate.
+
+If anything in `tests/isolation/` fails, nothing ships until it's green. This is currently a
+manual pre-release step; wiring it into CI as a blocking check is tracked in
+[docs/BACKLOG.md](docs/BACKLOG.md).
 
 ## Layout
 

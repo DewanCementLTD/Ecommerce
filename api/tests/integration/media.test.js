@@ -11,14 +11,10 @@ import { variantPath } from '../../src/lib/mediaStorage.js';
 const suffix = Date.now();
 const password = 'correct horse battery staple';
 const emailA = `media-test-a-${suffix}@example.test`;
-const emailB = `media-test-b-${suffix}@example.test`;
 
 let companyAId;
-let companyBId;
 let adminAId;
-let adminBId;
 let tokenA;
-let tokenB;
 
 async function seedAdmin(conn, { name, email, passHash }) {
   await conn.execute('INSERT INTO companies (name, status) VALUES (:name, :status)', {
@@ -47,25 +43,19 @@ beforeAll(async () => {
     const a = await seedAdmin(conn, { name: `Media Test Co A ${suffix}`, email: emailA, passHash });
     companyAId = a.companyId;
     adminAId = a.adminId;
-
-    const b = await seedAdmin(conn, { name: `Media Test Co B ${suffix}`, email: emailB, passHash });
-    companyBId = b.companyId;
-    adminBId = b.adminId;
   });
 
   const app = createApp();
   const loginA = await request(app).post('/auth/login').send({ email: emailA, password });
   tokenA = loginA.body.accessToken;
-  const loginB = await request(app).post('/auth/login').send({ email: emailB, password });
-  tokenB = loginB.body.accessToken;
 });
 
 afterAll(async () => {
   await withPlatform(async (conn) => {
-    await conn.execute('DELETE FROM media WHERE company_id IN (:a, :b)', { a: companyAId, b: companyBId });
-    await conn.execute('DELETE FROM logs WHERE admin_id IN (:a, :b)', { a: adminAId, b: adminBId });
-    await conn.execute('DELETE FROM admins WHERE id IN (:a, :b)', { a: adminAId, b: adminBId });
-    await conn.execute('DELETE FROM companies WHERE id IN (:a, :b)', { a: companyAId, b: companyBId });
+    await conn.execute('DELETE FROM media WHERE company_id = :a', { a: companyAId });
+    await conn.execute('DELETE FROM logs WHERE admin_id = :a', { a: adminAId });
+    await conn.execute('DELETE FROM admins WHERE id = :a', { a: adminAId });
+    await conn.execute('DELETE FROM companies WHERE id = :a', { a: companyAId });
     await conn.commit();
   });
 
@@ -112,55 +102,15 @@ describe('media upload', () => {
     const res = await request(createApp()).post('/media').attach('file', image, 'photo.png');
     expect(res.status).toBe(401);
   });
-});
 
-describe('cross-company isolation', () => {
-  let mediaId;
-
-  beforeAll(async () => {
-    const image = await makeTestImage();
-    const res = await request(createApp())
+  it('lets its own company read, update, and soft-delete what it uploaded', async () => {
+    const app = createApp();
+    const upload = await request(app)
       .post('/media')
       .set('Authorization', `Bearer ${tokenA}`)
-      .attach('file', image, 'private.png');
-    mediaId = res.body.media.ID;
-  });
+      .attach('file', await makeTestImage(), 'own.png');
+    const mediaId = upload.body.media.ID;
 
-  it('Company B cannot read Company A media by id', async () => {
-    const res = await request(createApp())
-      .get(`/media/${mediaId}`)
-      .set('Authorization', `Bearer ${tokenB}`);
-    expect(res.status).toBe(404);
-  });
-
-  it("Company B cannot see Company A media in its own list", async () => {
-    const res = await request(createApp()).get('/media').set('Authorization', `Bearer ${tokenB}`);
-    expect(res.status).toBe(200);
-    expect(res.body.rows.some((row) => row.ID === mediaId)).toBe(false);
-  });
-
-  it('Company B cannot fetch the file bytes for Company A media', async () => {
-    const res = await request(createApp())
-      .get(`/media/${mediaId}/file`)
-      .set('Authorization', `Bearer ${tokenB}`);
-    expect(res.status).toBe(404);
-  });
-
-  it('Company B cannot update or delete Company A media', async () => {
-    const patchRes = await request(createApp())
-      .patch(`/media/${mediaId}`)
-      .set('Authorization', `Bearer ${tokenB}`)
-      .send({ alt: 'hijacked' });
-    expect(patchRes.status).toBe(404);
-
-    const deleteRes = await request(createApp())
-      .delete(`/media/${mediaId}`)
-      .set('Authorization', `Bearer ${tokenB}`);
-    expect(deleteRes.status).toBe(404);
-  });
-
-  it('Company A can read, update, and soft-delete its own media', async () => {
-    const app = createApp();
     const getRes = await request(app).get(`/media/${mediaId}`).set('Authorization', `Bearer ${tokenA}`);
     expect(getRes.status).toBe(200);
 
@@ -171,9 +121,7 @@ describe('cross-company isolation', () => {
     expect(patchRes.status).toBe(200);
     expect(patchRes.body.media.ALT).toBe('updated alt text');
 
-    const deleteRes = await request(app)
-      .delete(`/media/${mediaId}`)
-      .set('Authorization', `Bearer ${tokenA}`);
+    const deleteRes = await request(app).delete(`/media/${mediaId}`).set('Authorization', `Bearer ${tokenA}`);
     expect(deleteRes.status).toBe(204);
 
     const afterDelete = await request(app).get(`/media/${mediaId}`).set('Authorization', `Bearer ${tokenA}`);
