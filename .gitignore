@@ -10,8 +10,7 @@ out/
 
 coverage/
 
-storeforge-media/
-media/**/uploads/
+/media/
 
 *.log
 npm-debug.log*

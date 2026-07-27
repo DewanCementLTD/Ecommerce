@@ -20,6 +20,7 @@ const PLATFORM_TABLES = [
   'settings',
   'langs',
   'logs',
+  'media',
 ];
 
 async function run() {

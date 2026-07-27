@@ -8,6 +8,8 @@ import { errorHandler } from './middleware/error.js';
 import { tenantResolver } from './middleware/tenant.js';
 import { storefrontRouter } from './modules/storefront/storefront.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { requireAuth } from './middleware/auth.js';
+import { mediaRouter } from './modules/media/media.routes.js';
 
 export function createApp() {
   const app = express();
@@ -24,6 +26,7 @@ export function createApp() {
 
   app.use('/storefront', tenantResolver, storefrontRouter);
   app.use('/auth', authRouter);
+  app.use('/media', requireAuth, mediaRouter);
 
   app.use((req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });

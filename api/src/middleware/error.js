@@ -20,6 +20,11 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
+  if (err.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE' ? 'Images must be 10MB or smaller.' : err.message;
+    return res.status(400).json({ error: { code: `UPLOAD_${err.code}`, message } });
+  }
+
   const isAppError = err instanceof AppError;
   const status = isAppError ? err.status : 500;
   const code = isAppError ? err.code : 'INTERNAL_ERROR';

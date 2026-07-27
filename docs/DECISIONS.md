@@ -47,7 +47,15 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 ---
 
 **Date:** 2026-07-27
-**Phase / Task:** phase-0, Task 6 (recorded ahead of time, applies when Task 6 is built)
-**Decision:** The `company_id`-path guard for media serving is enforced in Express for Phase 0, not at the Nginx layer.
+**Phase / Task:** phase-0, Task 6
+**Decision:** `media`'s file-size column is `size_bytes`, not `size`.
+**Why:** Unlike `key`/`value` (fine as Oracle column names), `SIZE` is on Oracle's actual reserved-words list (used historically in storage-clause and datatype-size syntax), so `CREATE TABLE media (... size NUMBER ...)` raises `ORA-00904: invalid identifier`. Same category of issue as the `_migrations` rename, caught the same way — by actually running it.
+**Alternatives considered:** Quoting `"size"` everywhere (rejected, same fragility argument as before).
+
+---
+
+**Date:** 2026-07-27
+**Phase / Task:** phase-0, Task 6
+**Decision:** The `company_id` guard for media serving is enforced in Express for Phase 0, not at the Nginx layer.
 **Why:** Task 1's dev stack has no Nginx, and `00-SYSTEM-DESIGN.md §10` only places Nginx in the production environment. Building an Nginx-layer guard now means writing reverse-proxy config with nothing running locally to test it against.
 **Alternatives considered:** Standing up a local Nginx just for this guard (rejected — no other part of Phase 0 needs a reverse proxy; revisit in Phase 3 when Nginx enters the stack for real).
