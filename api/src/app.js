@@ -14,6 +14,7 @@ import { mediaRouter } from './modules/media/media.routes.js';
 import { platformRouter } from './modules/platform/platform.routes.js';
 import { catsRouter } from './modules/cats/cats.routes.js';
 import { productsRouter } from './modules/products/products.routes.js';
+import { collsRouter } from './modules/colls/colls.routes.js';
 
 export function createApp() {
   const app = express();
@@ -33,6 +34,7 @@ export function createApp() {
   app.use('/media', requireAuth, requireCompany, mediaRouter);
   app.use('/cats', requireAuth, requireCompany, catsRouter);
   app.use('/products', requireAuth, requireCompany, productsRouter);
+  app.use('/colls', requireAuth, requireCompany, collsRouter);
   app.use('/platform', requireAuth, requireRole('platform'), platformRouter);
 
   app.use((req, res) => {
