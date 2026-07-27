@@ -82,3 +82,27 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** Added Tailwind (`tailwind.config.js`, `postcss.config.js`, `app/globals.css`) to `storefront/`, which didn't have it.
 **Why:** Task 1 wired up Tailwind for `admin` and `superadmin` but never for `storefront`, even though `CLAUDE.md`'s stack table lists Tailwind for all three. It went unnoticed until now because Task 1's storefront page had no meaningful layout for its absence to be visible; Task 9's first real screenshot showed fully unstyled markup (utility classes present in the JSX but never compiled), which is what caught it.
 **Alternatives considered:** None — this was a straightforward gap-fill, not a design choice.
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, all tasks
+**Decision:** Repositories keep using raw parameterized `oracledb` SQL. Knex is not introduced, and this supersedes the "Query layer: Knex (query builder only)" row in `CLAUDE.md`'s stack table.
+**Why:** All six Phase 0 repo modules are already written this way, and the awkward parts of talking to Oracle from Node are solved in that style: `OFFSET ... FETCH NEXT` pagination, `RETURNING id INTO :id`, `CHECK (col IS JSON)` CLOBs, and the thin-mode `NJS-098` repeated-bind rule. Adding Knex for the Phase 1 modules would mean re-solving each of those against its Oracle dialect while leaving Phase 0's repos in a second, different style. Agreed with you before Task 1 was written.
+**Alternatives considered:** Knex for new modules only (rejected — two conventions in one `modules/` folder is worse than one convention that differs from a doc); Knex everywhere including a rewrite of Phase 0's repos (rejected — a large, untested-benefit refactor at the start of the phase with the most new SQL to write).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 1
+**Decision:** Two columns are renamed from the literal names in `docs/02-PHASE-1-catalog.md`: `desc` → `descr` (on `cats`, `products`, `colls`) and `options.values` → `options.vals`.
+**Why:** `DESC` and `VALUES` are both on Oracle's reserved-word list — confirmed on this instance with `SELECT keyword, reserved FROM v$reserved_words`, which returns `RESERVED='Y'` for both — so neither works as an unquoted column name. Same class of issue as Phase 0's `size` → `size_bytes`, but caught before writing the migration this time rather than after. The reserved list was checked for every column name in the Phase 1 brief; `type`, `position`, `content`, `rules`, `label`, `source`, `limit`, `period` and `value` are all clear.
+**Alternatives considered:** Quoting `"desc"`/`"values"` everywhere (rejected for the third time in this project — it forces exact-case double quotes into every query that ever touches the column).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 1
+**Decision:** Every child table in `003_catalog.sql` references its parent by the composite key `(company_id, id)`, not by `id` alone — e.g. `variants_product_fk FOREIGN KEY (company_id, product_id) REFERENCES products(company_id, id)`. This required adding `UNIQUE (company_id, id)` to `products`, `cats`, `colls`, and to the pre-existing `media` table.
+**Why:** Oracle checks integrity constraints in the kernel, and that check is **not** subject to VPD. A plain `product_id NUMBER REFERENCES products(id)` would therefore happily accept another company's product id — the row's own `company_id` would pass the VPD check while its parent pointer crossed a tenant boundary. The composite form makes that combination unrepresentable in the database, which turns "a child never belongs to another company's parent" into a fourth enforcement layer instead of an application-level convention. `tests/isolation/catalog-schema.test.js` asserts all three variations (variant → foreign product, `prod_cats` → foreign category, `prod_imgs` → foreign media) fail with `ORA-02291`.
+**Alternatives considered:** Single-column FKs plus a service-layer "parent must be in my company" check (rejected — that check is exactly the kind of thing a future refactor forgets, and the whole point of the three-layer model is not to rely on remembering). Note the FK is unenforced when the child column is NULL (Oracle has no `MATCH PARTIAL`), which is the desired behaviour for nullable `parent_id`/`image_id`.

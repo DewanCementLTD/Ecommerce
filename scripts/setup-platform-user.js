@@ -21,6 +21,14 @@ const PLATFORM_TABLES = [
   'langs',
   'logs',
   'media',
+  'cats',
+  'products',
+  'variants',
+  'options',
+  'prod_imgs',
+  'prod_cats',
+  'colls',
+  'coll_prods',
 ];
 
 async function run() {
