@@ -135,6 +135,15 @@ export async function getColl({ companyId, id }) {
   return toCollDto(row);
 }
 
+/** Slug lookup for the storefront; `activeOnly` keeps hidden collections hidden. */
+export async function getCollBySlug({ companyId, slug, activeOnly = false }) {
+  const row = await withCompany(companyId, (conn) => repo.findCollBySlug(conn, { companyId, slug }));
+  if (!row || (activeOnly && row.IS_ACTIVE !== 1)) {
+    throw new AppError(404, 'COLL_NOT_FOUND', 'Collection not found.');
+  }
+  return toCollDto(row);
+}
+
 export async function patchColl({ companyId, id, ...input }) {
   await withCompany(companyId, async (conn) => {
     const existing = await repo.findCollById(conn, { companyId, id });

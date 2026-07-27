@@ -15,6 +15,7 @@ import { platformRouter } from './modules/platform/platform.routes.js';
 import { catsRouter } from './modules/cats/cats.routes.js';
 import { productsRouter } from './modules/products/products.routes.js';
 import { collsRouter } from './modules/colls/colls.routes.js';
+import { shopRouter } from './modules/shop/shop.routes.js';
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
   });
 
   app.use('/storefront', tenantResolver, storefrontRouter);
+  app.use('/shop', tenantResolver, shopRouter);
   app.use('/auth', authRouter);
   app.use('/media', requireAuth, requireCompany, mediaRouter);
   app.use('/cats', requireAuth, requireCompany, catsRouter);

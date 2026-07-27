@@ -40,6 +40,16 @@ export async function findProductById(conn, { companyId, id, includeDeleted = fa
   return result.rows[0] ?? null;
 }
 
+export async function findProductBySlug(conn, { companyId, slug, activeOnly = false }) {
+  const result = await conn.execute(
+    `SELECT ${PRODUCT_COLUMNS} FROM products
+      WHERE slug = :slug AND company_id = :companyId AND deleted_at IS NULL
+        AND (:activeOnly = 0 OR is_active = 1)`,
+    { slug, companyId, activeOnly: activeOnly ? 1 : 0 },
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function updateProduct(conn, product) {
   const result = await conn.execute(
     `UPDATE products

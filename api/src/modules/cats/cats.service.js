@@ -7,6 +7,7 @@ import { isForeignKeyViolation } from '../../lib/dbErrors.js';
 import {
   insertCat,
   findCatById,
+  findCatBySlug,
   countCatDependents,
   listCats as listCatRows,
   listCatsForTree,
@@ -141,6 +142,15 @@ export async function getCat({ companyId, id }) {
     throw new AppError(404, 'CAT_NOT_FOUND', 'Category not found.');
   }
   return { ...camelRow(result.row), ...result.counts };
+}
+
+/** Slug lookup for the storefront; `activeOnly` keeps hidden categories hidden. */
+export async function getCatBySlug({ companyId, slug, activeOnly = false }) {
+  const row = await withCompany(companyId, (conn) => findCatBySlug(conn, { companyId, slug }));
+  if (!row || (activeOnly && row.IS_ACTIVE !== 1)) {
+    throw new AppError(404, 'CAT_NOT_FOUND', 'Category not found.');
+  }
+  return camelRow(row);
 }
 
 export async function patchCat({ companyId, id, ...input }) {

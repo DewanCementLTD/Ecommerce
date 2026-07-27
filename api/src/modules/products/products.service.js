@@ -207,34 +207,41 @@ export async function listProducts({ companyId, ...query }) {
  * The full aggregate for the product editor. Six statements for one product is
  * not an N+1 — none of them scale with the number of products on screen.
  */
+async function loadAggregate(conn, { companyId, product }) {
+  const productId = product.ID;
+  return {
+    ...toProductDto(product),
+    variants: (await repo.listVariants(conn, { companyId, productId })).map(toVariantDto),
+    options: (await repo.listOptions(conn, { companyId, productId })).map(toOptionDto),
+    images: camelRows(await repo.listProductImages(conn, { companyId, productId })),
+    catIds: await repo.listProductCatIds(conn, { companyId, productId }),
+    collIds: await repo.listProductCollIds(conn, { companyId, productId }),
+  };
+}
+
 export async function getProduct({ companyId, id }) {
   const result = await withCompany(companyId, async (conn) => {
     const product = await repo.findProductById(conn, { companyId, id });
-    if (!product) return null;
-
-    const [variants, options, images, catIds, collIds] = [
-      await repo.listVariants(conn, { companyId, productId: id }),
-      await repo.listOptions(conn, { companyId, productId: id }),
-      await repo.listProductImages(conn, { companyId, productId: id }),
-      await repo.listProductCatIds(conn, { companyId, productId: id }),
-      await repo.listProductCollIds(conn, { companyId, productId: id }),
-    ];
-
-    return { product, variants, options, images, catIds, collIds };
+    return product ? loadAggregate(conn, { companyId, product }) : null;
   });
 
   if (!result) {
     throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found.');
   }
+  return result;
+}
 
-  return {
-    ...toProductDto(result.product),
-    variants: result.variants.map(toVariantDto),
-    options: result.options.map(toOptionDto),
-    images: camelRows(result.images),
-    catIds: result.catIds,
-    collIds: result.collIds,
-  };
+/** Same aggregate, addressed the way the storefront addresses it. */
+export async function getProductBySlug({ companyId, slug, activeOnly = false }) {
+  const result = await withCompany(companyId, async (conn) => {
+    const product = await repo.findProductBySlug(conn, { companyId, slug, activeOnly });
+    return product ? loadAggregate(conn, { companyId, product }) : null;
+  });
+
+  if (!result) {
+    throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found.');
+  }
+  return result;
 }
 
 /* ----------------------------------------------------------------- writing */
