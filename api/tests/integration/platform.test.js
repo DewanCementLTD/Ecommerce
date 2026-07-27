@@ -4,6 +4,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { initPool, closePool, withPlatform } from '../../src/db/pool.js';
 import { getRedis, closeRedis } from '../../src/lib/redis.js';
+import { deleteCompanies } from '../helpers/cleanup.js';
 
 const suffix = Date.now();
 const platformEmail = process.env.PLATFORM_ADMIN_EMAIL;
@@ -14,7 +15,6 @@ const ownerPassword = 'correct horse battery staple';
 
 let platformToken;
 let ownerCompanyId;
-let ownerAdminId;
 let ownerToken;
 
 const createdCompanyIds = [];
@@ -38,8 +38,6 @@ beforeAll(async () => {
        VALUES (:companyId, :email, :passHash, 'Owner Admin', 'owner', 1)`,
       { companyId: ownerCompanyId, email: ownerEmail, passHash },
     );
-    const admin = await conn.execute('SELECT id FROM admins WHERE email = :email', { email: ownerEmail });
-    ownerAdminId = admin.rows[0].ID;
 
     await conn.commit();
   });
@@ -56,18 +54,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await withPlatform(async (conn) => {
-    for (const id of createdCompanyIds) {
-      await conn.execute('DELETE FROM logs WHERE company_id = :id', { id });
-      await conn.execute('DELETE FROM settings WHERE company_id = :id', { id });
-      await conn.execute('DELETE FROM langs WHERE company_id = :id', { id });
-      await conn.execute('DELETE FROM admins WHERE company_id = :id', { id });
-      await conn.execute('DELETE FROM domains WHERE company_id = :id', { id });
-      await conn.execute('DELETE FROM companies WHERE id = :id', { id });
-    }
-    await conn.execute('DELETE FROM logs WHERE company_id = :id', { id: ownerCompanyId });
-    await conn.execute('DELETE FROM admins WHERE id = :id', { id: ownerAdminId });
-    await conn.execute('DELETE FROM companies WHERE id = :id', { id: ownerCompanyId });
-    await conn.commit();
+    await deleteCompanies(conn, [...createdCompanyIds, ownerCompanyId]);
   });
 
   await closeRedis();
@@ -116,6 +103,64 @@ describe('POST /platform/companies', () => {
       .send({ email: adminEmail, password: res.body.admin.tempPassword });
     expect(loginRes.status).toBe(200);
     expect(loginRes.body.admin.companyId).toBe(res.body.company.ID);
+  });
+
+  it('provisions a store that is usable immediately — pages, home sections, categories and menus', async () => {
+    // Steps 6-9 of 00-SYSTEM-DESIGN.md §6, the Phase 0 carry-over. Without
+    // these, "creating a company gives a working store" was only true in the
+    // Phase 0 sense: a login and a domain, but nothing to render.
+    const app = createApp();
+    const suffixLocal = `${suffix}-usable`;
+
+    const res = await request(app)
+      .post('/platform/companies')
+      .set('Authorization', `Bearer ${platformToken}`)
+      .send({
+        name: `Usable Co ${suffixLocal}`,
+        domainHost: `usable-${suffixLocal}.example.test`,
+        adminEmail: `usable-${suffixLocal}@example.test`,
+        adminName: 'Usable Admin',
+      });
+    expect(res.status).toBe(201);
+    const companyId = res.body.company.ID;
+    createdCompanyIds.push(companyId);
+
+    const token = (
+      await request(app)
+        .post('/auth/login')
+        .send({ email: `usable-${suffixLocal}@example.test`, password: res.body.admin.tempPassword })
+    ).body.accessToken;
+    const auth = (req) => req.set('Authorization', `Bearer ${token}`);
+
+    const pages = await auth(request(app).get('/pages'));
+    expect(pages.body.rows.map((row) => row.slug).sort()).toEqual(['about', 'contact', 'home', 'privacy']);
+
+    const home = pages.body.rows.find((row) => row.type === 'home');
+    const sections = await auth(request(app).get(`/pages/${home.id}/sections`));
+    expect(sections.body.rows.map((row) => row.type)).toEqual([
+      'hero',
+      'cat_tiles',
+      'prod_row',
+      'features',
+      'news',
+    ]);
+    // Registry defaults, not empty JSON — the arranger can edit these as-is.
+    expect(sections.body.rows[0].settings.interval).toBe(6);
+
+    const cats = await auth(request(app).get('/cats/tree'));
+    expect(cats.body.tree.length).toBe(3);
+
+    const menus = await auth(request(app).get('/menus'));
+    expect(menus.body.rows.map((row) => row.code).sort()).toEqual(['footer', 'header']);
+
+    const headerId = menus.body.rows.find((row) => row.code === 'header').id;
+    const headerItems = await auth(request(app).get(`/menus/${headerId}/items`));
+    expect(headerItems.body.items).toHaveLength(3);
+    expect(headerItems.body.items[0].linkType).toBe('cat');
+
+    const footerId = menus.body.rows.find((row) => row.code === 'footer').id;
+    const footerItems = await auth(request(app).get(`/menus/${footerId}/items`));
+    expect(footerItems.body.items.map((item) => item.label)).toEqual(['About', 'Contact', 'Privacy']);
   });
 
   it('rejects a duplicate domain and rolls back the whole transaction', async () => {

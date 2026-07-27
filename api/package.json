@@ -24,7 +24,8 @@
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "sharp": "^0.35.3",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@storeforge/shared": "*"
   },
   "devDependencies": {
     "supertest": "^7.0.0",

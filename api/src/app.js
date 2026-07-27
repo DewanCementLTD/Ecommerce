@@ -16,6 +16,13 @@ import { catsRouter } from './modules/cats/cats.routes.js';
 import { productsRouter } from './modules/products/products.routes.js';
 import { collsRouter } from './modules/colls/colls.routes.js';
 import { shopRouter } from './modules/shop/shop.routes.js';
+import {
+  pagesRouter,
+  sectionsRouter,
+  bannersRouter,
+  menusRouter,
+  menuItemsRouter,
+} from './modules/content/content.routes.js';
 
 export function createApp() {
   const app = express();
@@ -37,6 +44,11 @@ export function createApp() {
   app.use('/cats', requireAuth, requireCompany, catsRouter);
   app.use('/products', requireAuth, requireCompany, productsRouter);
   app.use('/colls', requireAuth, requireCompany, collsRouter);
+  app.use('/pages', requireAuth, requireCompany, pagesRouter);
+  app.use('/sections', requireAuth, requireCompany, sectionsRouter);
+  app.use('/banners', requireAuth, requireCompany, bannersRouter);
+  app.use('/menus', requireAuth, requireCompany, menusRouter);
+  app.use('/menu-items', requireAuth, requireCompany, menuItemsRouter);
   app.use('/platform', requireAuth, requireRole('platform'), platformRouter);
 
   app.use((req, res) => {

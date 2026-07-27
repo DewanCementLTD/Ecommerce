@@ -56,6 +56,57 @@ export async function insertLang(conn, { companyId, code, name, isDefault }) {
   );
 }
 
+/* ------------------------------------------------------------------------ */
+/* Provisioning steps 6-9 of 00-SYSTEM-DESIGN.md §6 — the tables these write to
+/* did not exist in Phase 0. All run on the same connection and transaction as
+/* the company row itself, so a store is either fully usable or not created.   */
+/* ------------------------------------------------------------------------ */
+
+export async function insertPage(conn, { companyId, title, slug, type }) {
+  const result = await conn.execute(
+    `INSERT INTO pages (company_id, title, slug, type, is_active)
+     VALUES (:companyId, :title, :slug, :type, 1)
+     RETURNING id INTO :id`,
+    { companyId, title, slug, type, id: OUT_ID },
+  );
+  return result.outBinds.id[0];
+}
+
+export async function insertSection(conn, { companyId, pageId, type, position, settings }) {
+  await conn.execute(
+    `INSERT INTO sections (company_id, page_id, type, position, is_active, settings)
+     VALUES (:companyId, :pageId, :type, :position, 1, :settings)`,
+    { companyId, pageId, type, position, settings },
+  );
+}
+
+export async function insertStarterCat(conn, { companyId, name, slug, position }) {
+  const result = await conn.execute(
+    `INSERT INTO cats (company_id, name, slug, position, is_active)
+     VALUES (:companyId, :name, :slug, :position, 1)
+     RETURNING id INTO :id`,
+    { companyId, name, slug, position, id: OUT_ID },
+  );
+  return result.outBinds.id[0];
+}
+
+export async function insertMenu(conn, { companyId, code, name }) {
+  const result = await conn.execute(
+    `INSERT INTO menus (company_id, code, name) VALUES (:companyId, :code, :name)
+     RETURNING id INTO :id`,
+    { companyId, code, name, id: OUT_ID },
+  );
+  return result.outBinds.id[0];
+}
+
+export async function insertMenuItem(conn, { companyId, menuId, label, url, linkType, linkId, position }) {
+  await conn.execute(
+    `INSERT INTO menu_items (company_id, menu_id, label, url, link_type, link_id, position, is_active)
+     VALUES (:companyId, :menuId, :label, :url, :linkType, :linkId, :position, 1)`,
+    { companyId, menuId, label, url: url ?? null, linkType, linkId: linkId ?? null, position },
+  );
+}
+
 export async function findCompanyById(conn, id) {
   const result = await conn.execute(
     `SELECT id, name, biz_name, email, phone, logo_media_id, theme_id, currency, timezone, status, created_at, updated_at

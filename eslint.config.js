@@ -16,7 +16,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ['api/**/*.js', 'scripts/**/*.js'],
+    files: ['api/**/*.js', 'scripts/**/*.js', 'shared/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

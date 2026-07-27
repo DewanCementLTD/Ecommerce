@@ -6,12 +6,18 @@ import { generateTempPassword } from '../../lib/password.js';
 import { signAccessToken } from '../../lib/jwt.js';
 import { AppError } from '../../middleware/error.js';
 import { insertLog, listLogs as listLogsRows } from '../logs/logs.repo.js';
+import { DEFAULT_HOME_SECTIONS, defaultSettings } from '@storeforge/shared';
 import {
   insertCompany,
   insertDomain,
   insertAdmin,
   insertSetting,
   insertLang,
+  insertPage,
+  insertSection,
+  insertStarterCat,
+  insertMenu,
+  insertMenuItem,
   findCompanyById,
   findDomainByHost,
   findAdminByEmail,
@@ -24,11 +30,36 @@ import {
   listSettingsByCompany,
 } from './platform.repo.js';
 
+/** Step 6: every store starts with these four pages. */
+const DEFAULT_PAGES = [
+  { title: 'Home', slug: 'home', type: 'home' },
+  { title: 'About', slug: 'about', type: 'page' },
+  { title: 'Contact', slug: 'contact', type: 'page' },
+  { title: 'Privacy', slug: 'privacy', type: 'page' },
+];
+
+/** Step 8: placeholders, so the catalog screens are never an empty void. */
+const STARTER_CATS = [
+  { name: 'Featured', slug: 'featured' },
+  { name: 'New arrivals', slug: 'new-arrivals' },
+  { name: 'Offers', slug: 'offers' },
+];
+
 /**
- * Phase 0 provisioning covers steps 1-5 and 10 of 00-SYSTEM-DESIGN.md §6
- * (company, domain, first admin, default settings, default language, audit
- * log). Steps 6-9 (pages/sections/cats/menus) move to Phase 1 once those
- * tables exist — see docs/DECISIONS.md.
+ * Step 9. Header links to the starter categories; footer to the content pages.
+ * Nothing here names a client — the labels come from the defaults above, which
+ * the owner renames from the admin on day one.
+ */
+const FOOTER_LINKS = ['about', 'contact', 'privacy'];
+
+/**
+ * All ten steps of 00-SYSTEM-DESIGN.md §6, in one transaction.
+ *
+ * Phase 0 could only do 1-5 and 10; steps 6-9 write to pages, sections, cats,
+ * menus and menu_items, which did not exist until Phase 1's migrations. This is
+ * the carry-over the Phase 0 report called its top item: from here, a company
+ * created through this endpoint has a renderable home page, a navigable header
+ * and footer, and starter categories, with no manual follow-up.
  */
 export async function provisionCompany(input, { actorAdminId, ip }) {
   const tempPassword = generateTempPassword();
@@ -62,6 +93,57 @@ export async function provisionCompany(input, { actorAdminId, ip }) {
         name: input.defaultLangName,
         isDefault: true,
       });
+
+      // Step 6 — default pages.
+      const pageIds = {};
+      for (const page of DEFAULT_PAGES) {
+        pageIds[page.slug] = await insertPage(conn, { companyId, ...page });
+      }
+
+      // Step 7 — the home page's starting sections, from the shared registry so
+      // a new store's home page matches what the section arranger can edit.
+      for (const [position, type] of DEFAULT_HOME_SECTIONS.entries()) {
+        await insertSection(conn, {
+          companyId,
+          pageId: pageIds.home,
+          type,
+          position,
+          settings: JSON.stringify(defaultSettings(type)),
+        });
+      }
+
+      // Step 8 — starter categories.
+      const catIds = [];
+      for (const [position, cat] of STARTER_CATS.entries()) {
+        catIds.push({ id: await insertStarterCat(conn, { companyId, ...cat, position }), ...cat });
+      }
+
+      // Step 9 — header and footer menus.
+      const headerMenuId = await insertMenu(conn, { companyId, code: 'header', name: 'Header' });
+      const footerMenuId = await insertMenu(conn, { companyId, code: 'footer', name: 'Footer' });
+
+      for (const [position, cat] of catIds.entries()) {
+        await insertMenuItem(conn, {
+          companyId,
+          menuId: headerMenuId,
+          label: cat.name,
+          linkType: 'cat',
+          linkId: cat.id,
+          position,
+        });
+      }
+      for (const [position, slug] of FOOTER_LINKS.entries()) {
+        const page = DEFAULT_PAGES.find((candidate) => candidate.slug === slug);
+        await insertMenuItem(conn, {
+          companyId,
+          menuId: footerMenuId,
+          label: page.title,
+          linkType: 'page',
+          linkId: pageIds[slug],
+          position,
+        });
+      }
+
       await insertLog(conn, {
         companyId,
         adminId: actorAdminId,

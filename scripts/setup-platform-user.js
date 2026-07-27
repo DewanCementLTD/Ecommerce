@@ -29,6 +29,11 @@ const PLATFORM_TABLES = [
   'prod_cats',
   'colls',
   'coll_prods',
+  'pages',
+  'sections',
+  'banners',
+  'menus',
+  'menu_items',
 ];
 
 async function run() {
