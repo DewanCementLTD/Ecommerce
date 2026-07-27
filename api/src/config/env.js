@@ -21,6 +21,12 @@ export const env = {
     port: Number(process.env.REDIS_PORT ?? 6379),
     password: process.env.REDIS_PASSWORD || undefined,
   },
+  jwt: {
+    accessSecret: process.env.JWT_ACCESS_SECRET,
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
+    accessTtl: process.env.JWT_ACCESS_TTL ?? '15m',
+    refreshTtl: process.env.JWT_REFRESH_TTL ?? '7d',
+  },
   db: {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,

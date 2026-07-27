@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import { logger } from '../lib/logger.js';
 
 export class AppError extends Error {
@@ -11,12 +12,18 @@ export class AppError extends Error {
 
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
+  (req.log ?? logger).error({ err }, 'request failed');
+
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Invalid request.', issues: err.issues },
+    });
+  }
+
   const isAppError = err instanceof AppError;
   const status = isAppError ? err.status : 500;
   const code = isAppError ? err.code : 'INTERNAL_ERROR';
   const message = isAppError ? err.message : 'Internal server error';
-
-  (req.log ?? logger).error({ err }, 'request failed');
 
   res.status(status).json({ error: { code, message } });
 }
