@@ -34,6 +34,7 @@ const PLATFORM_TABLES = [
   'banners',
   'menus',
   'menu_items',
+  'trans',
 ];
 
 async function run() {

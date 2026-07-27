@@ -23,6 +23,7 @@ import {
   menusRouter,
   menuItemsRouter,
 } from './modules/content/content.routes.js';
+import { langsRouter, transRouter } from './modules/i18n/i18n.routes.js';
 
 export function createApp() {
   const app = express();
@@ -49,6 +50,8 @@ export function createApp() {
   app.use('/banners', requireAuth, requireCompany, bannersRouter);
   app.use('/menus', requireAuth, requireCompany, menusRouter);
   app.use('/menu-items', requireAuth, requireCompany, menuItemsRouter);
+  app.use('/langs', requireAuth, requireCompany, langsRouter);
+  app.use('/trans', requireAuth, requireCompany, transRouter);
   app.use('/platform', requireAuth, requireRole('platform'), platformRouter);
 
   app.use((req, res) => {

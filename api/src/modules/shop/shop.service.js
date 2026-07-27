@@ -1,6 +1,8 @@
 import * as catsService from '../cats/cats.service.js';
 import * as productsService from '../products/products.service.js';
 import * as collsService from '../colls/colls.service.js';
+import * as i18nService from '../i18n/i18n.service.js';
+import { loadTranslations, applyTranslations } from '../i18n/i18n.service.js';
 
 /**
  * The public face of the catalog.
@@ -104,7 +106,52 @@ function toPublicTreeNode(node) {
   };
 }
 
-export async function listProducts({ companyId, page, pageSize, search, catId, collId, sort, dir, featured }) {
+/**
+ * Translation is applied here rather than inside each catalog service, for the
+ * same reason the public projection is: the storefront is the only caller that
+ * reads in a shopper's language, and the admin must keep seeing the rows as
+ * stored. `lang` and `defaultLang` both come from the resolved company.
+ *
+ * Every call is batched — one query per entity type per request, never one per
+ * row — and falls back per field, so a half-translated product shows its
+ * translated name beside its untranslated description.
+ */
+async function translate({ companyId, entity, rows, lang, defaultLang, idKey = 'id' }) {
+  if (!lang || lang === defaultLang || rows.length === 0) return rows;
+  const map = await loadTranslations({
+    companyId,
+    entity,
+    entityIds: rows.map((row) => row[idKey]),
+    lang,
+    defaultLang,
+  });
+  return applyTranslations(rows, map, { idKey });
+}
+
+/** Nested categories, translated level by level in one query for the whole tree. */
+async function translateTree({ companyId, nodes, lang, defaultLang }) {
+  if (!lang || lang === defaultLang) return nodes;
+
+  const flat = [];
+  const walk = (list) => list.forEach((node) => { flat.push(node); walk(node.children); });
+  walk(nodes);
+  if (flat.length === 0) return nodes;
+
+  const map = await loadTranslations({
+    companyId,
+    entity: 'cat',
+    entityIds: flat.map((node) => node.id),
+    lang,
+    defaultLang,
+  });
+  if (map.size === 0) return nodes;
+
+  const rebuild = (list) =>
+    list.map((node) => ({ ...node, ...(map.get(node.id) ?? {}), children: rebuild(node.children) }));
+  return rebuild(nodes);
+}
+
+export async function listProducts({ companyId, page, pageSize, search, catId, collId, sort, dir, featured, lang, defaultLang }) {
   const result = await productsService.listProducts({
     companyId,
     page,
@@ -118,27 +165,60 @@ export async function listProducts({ companyId, page, pageSize, search, catId, c
     dir,
   });
 
-  return { rows: result.rows.map(toCard), total: result.total, page: result.page, pageSize: result.pageSize };
+  const translated = await translate({
+    companyId,
+    entity: 'product',
+    rows: result.rows,
+    lang,
+    defaultLang,
+  });
+
+  return {
+    rows: translated.map(toCard),
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+  };
 }
 
-export async function getProduct({ companyId, slug }) {
+export async function getProduct({ companyId, slug, lang, defaultLang }) {
   const product = await productsService.getProductBySlug({ companyId, slug, activeOnly: true });
-  return toDetail(product);
+  const [translated] = await translate({
+    companyId,
+    entity: 'product',
+    rows: [product],
+    lang,
+    defaultLang,
+  });
+  return toDetail(translated);
 }
 
-export async function getCatTree({ companyId }) {
+export async function getCatTree({ companyId, lang, defaultLang }) {
   const { tree } = await catsService.getCatTree({ companyId, isActive: 1 });
-  return { tree: tree.map(toPublicTreeNode) };
+  const translated = await translateTree({ companyId, nodes: tree, lang, defaultLang });
+  return { tree: translated.map(toPublicTreeNode) };
 }
 
-export async function getCatWithProducts({ companyId, slug, page, pageSize, sort, dir }) {
+export async function getCatWithProducts({ companyId, slug, page, pageSize, sort, dir, lang, defaultLang }) {
   const cat = await catsService.getCatBySlug({ companyId, slug, activeOnly: true });
-  const products = await listProducts({ companyId, page, pageSize, catId: cat.id, sort, dir });
-  return { cat: toPublicCat(cat), products };
+  const [translatedCat] = await translate({ companyId, entity: 'cat', rows: [cat], lang, defaultLang });
+  const products = await listProducts({
+    companyId,
+    page,
+    pageSize,
+    catId: cat.id,
+    sort,
+    dir,
+    lang,
+    defaultLang,
+  });
+  return { cat: toPublicCat(translatedCat), products };
 }
 
-export async function getCollWithProducts({ companyId, slug, page, pageSize }) {
+export async function getCollWithProducts({ companyId, slug, page, pageSize, lang, defaultLang }) {
   const coll = await collsService.getCollBySlug({ companyId, slug, activeOnly: true });
+  const [translatedColl] = await translate({ companyId, entity: 'coll', rows: [coll], lang, defaultLang });
+
   const members = await collsService.listCollProducts({
     companyId,
     id: coll.id,
@@ -146,17 +226,24 @@ export async function getCollWithProducts({ companyId, slug, page, pageSize }) {
     pageSize,
     activeOnly: true,
   });
+  const translatedRows = await translate({
+    companyId,
+    entity: 'product',
+    rows: members.rows,
+    lang,
+    defaultLang,
+  });
 
   return {
     coll: {
-      id: coll.id,
-      name: coll.name,
-      slug: coll.slug,
-      descr: coll.descr,
-      image: coll.imageId ? { mediaId: coll.imageId, alt: coll.name, url: imageUrl(coll.imageId) } : null,
+      id: translatedColl.id,
+      name: translatedColl.name,
+      slug: translatedColl.slug,
+      descr: translatedColl.descr,
+      image: coll.imageId ? { mediaId: coll.imageId, alt: translatedColl.name, url: imageUrl(coll.imageId) } : null,
     },
     products: {
-      rows: members.rows.map(toCard),
+      rows: translatedRows.map(toCard),
       total: members.total,
       page: members.page,
       pageSize: members.pageSize,
@@ -164,7 +251,26 @@ export async function getCollWithProducts({ companyId, slug, page, pageSize }) {
   };
 }
 
-export async function search({ companyId, q, page, pageSize }) {
-  const result = await listProducts({ companyId, page, pageSize, search: q, sort: 'name', dir: 'asc' });
+/** Drives the storefront's language switcher and its hreflang alternates. */
+export async function listLangs({ companyId }) {
+  const { rows } = await i18nService.listLangs({ companyId });
+  return {
+    langs: rows
+      .filter((row) => row.isActive === 1)
+      .map((row) => ({ code: row.code, name: row.name, isDefault: row.isDefault === 1 })),
+  };
+}
+
+export async function search({ companyId, q, page, pageSize, lang, defaultLang }) {
+  const result = await listProducts({
+    companyId,
+    page,
+    pageSize,
+    search: q,
+    sort: 'name',
+    dir: 'asc',
+    lang,
+    defaultLang,
+  });
   return { q, ...result };
 }
