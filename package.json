@@ -19,7 +19,8 @@
     "migrate": "node scripts/migrate.js",
     "migrate:dry": "node scripts/migrate.js --dry-run",
     "setup:platform-user": "node scripts/setup-platform-user.js",
-    "seed:platform-admin": "node scripts/seed-platform-admin.js"
+    "seed:platform-admin": "node scripts/seed-platform-admin.js",
+    "seed:demo": "node scripts/seed-demo.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

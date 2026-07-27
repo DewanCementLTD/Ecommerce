@@ -16,10 +16,13 @@ cp .env.example .env          # already done on this machine — fill in your ow
 npm run setup:platform-user   # one-time: creates the VPD-exempt DB user used by withPlatform()
 npm run migrate
 npm run seed:platform-admin   # one-time: creates the first role=platform admin (PLATFORM_ADMIN_EMAIL/PASSWORD)
+npm run seed:demo             # one-time: two demo stores (demo-a.localhost / demo-b.localhost), each themed differently
 npm run dev
 ```
 
-`npm run dev` starts the API (`:4000`), the storefront (`:3000`), and the admin panel (`:5173`) together. Run `npm run dev --workspace=superadmin` separately for the Super Admin panel (`:5174`).
+`npm run dev` starts the API (`:4000`), the storefront (`:3000`, falls back to the next free port if occupied), and the admin panel (`:5173`) together. Run `npm run dev --workspace=superadmin` separately for the Super Admin panel (`:5174`).
+
+`demo-a.localhost` and `demo-b.localhost` need entries in the hosts file (`C:\Windows\System32\drivers\etc\hosts` on Windows) pointing at `127.0.0.1` — Windows doesn't resolve `*.localhost` automatically. Already done on this machine; `npm run seed:demo` prints each demo admin's one-time login.
 
 ## Scripts (root)
 
@@ -34,6 +37,7 @@ npm run dev
 | `npm run migrate:dry` | Lists pending migrations without applying them |
 | `npm run setup:platform-user` | One-time (idempotent) bootstrap of the `ecomm_platform` VPD-exempt DB user + its table synonyms |
 | `npm run seed:platform-admin` | One-time (idempotent) bootstrap of the first Super Admin login (`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD`) |
+| `npm run seed:demo` | One-time (idempotent) two demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` |
 
 ## Layout
 

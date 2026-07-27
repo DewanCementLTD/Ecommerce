@@ -67,3 +67,18 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** `scripts/seed-platform-admin.js` (bootstraps the first `role='platform'` admin, since nothing else can create one) connects as `ecomm_platform`, not `ecomm`.
 **Why:** A platform admin row has `company_id IS NULL`. Inserting it through the plain `ecomm` connection hits `ORA-28115: policy with check option violation` — the `admins` VPD policy's `update_check` evaluates `company_id = SYS_CONTEXT('sf_ctx','company_id')`, and with no context set on that connection, that's `NULL = NULL`, which SQL treats as unknown, not true. This is exactly the access pattern `withPlatform()` exists for, and it's what Task 7's provisioning/admin-management code uses throughout — the seed script just needed to follow the same rule.
 **Alternatives considered:** Special-casing `company_predicate` to treat "no context + NULL company_id" as a match (rejected — weakens the policy's fail-closed default for every table sharing the function, for a one-time bootstrap script that has a simpler fix).
+
+---
+
+**Date:** 2026-07-27
+**Phase / Task:** phase-0, Task 9
+**Decision:** Added `demo-a.localhost` / `demo-b.localhost` → `127.0.0.1` entries to this machine's hosts file (`C:\Windows\System32\drivers\etc\hosts`), appended after the existing unrelated entries for other local projects on this box.
+**Why:** Task 9 explicitly asks for these two host aliases to be reachable in dev, and this machine doesn't resolve `*.localhost` automatically (confirmed — `nslookup demo-a.localhost` went out to `8.8.8.8` and failed, rather than the OS short-circuiting to loopback the way some systems do). Editing the hosts file is the standard way to do this on Windows; only the two new lines were added, nothing existing was touched.
+
+---
+
+**Date:** 2026-07-27
+**Phase / Task:** phase-0, Task 9
+**Decision:** Added Tailwind (`tailwind.config.js`, `postcss.config.js`, `app/globals.css`) to `storefront/`, which didn't have it.
+**Why:** Task 1 wired up Tailwind for `admin` and `superadmin` but never for `storefront`, even though `CLAUDE.md`'s stack table lists Tailwind for all three. It went unnoticed until now because Task 1's storefront page had no meaningful layout for its absence to be visible; Task 9's first real screenshot showed fully unstyled markup (utility classes present in the JSX but never compiled), which is what caught it.
+**Alternatives considered:** None — this was a straightforward gap-fill, not a design choice.

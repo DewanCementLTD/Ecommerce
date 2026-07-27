@@ -51,6 +51,8 @@ export async function tenantResolver(req, res, next) {
       themeId: company.THEME_ID,
       currency: company.CURRENCY,
       defaultLang: company.DEFAULT_LANG,
+      theme: company.THEME_TOKENS ? JSON.parse(company.THEME_TOKENS) : null,
+      logoMediaId: company.LOGO_MEDIA_ID,
     };
 
     next();
