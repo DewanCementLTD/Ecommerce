@@ -18,7 +18,8 @@
     "test:isolation": "npm run test:isolation --workspace=api --if-present",
     "migrate": "node scripts/migrate.js",
     "migrate:dry": "node scripts/migrate.js --dry-run",
-    "setup:platform-user": "node scripts/setup-platform-user.js"
+    "setup:platform-user": "node scripts/setup-platform-user.js",
+    "seed:platform-admin": "node scripts/seed-platform-admin.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

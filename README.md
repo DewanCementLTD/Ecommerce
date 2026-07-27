@@ -15,6 +15,7 @@ npm install
 cp .env.example .env          # already done on this machine — fill in your own values elsewhere
 npm run setup:platform-user   # one-time: creates the VPD-exempt DB user used by withPlatform()
 npm run migrate
+npm run seed:platform-admin   # one-time: creates the first role=platform admin (PLATFORM_ADMIN_EMAIL/PASSWORD)
 npm run dev
 ```
 
@@ -32,6 +33,7 @@ npm run dev
 | `npm run migrate` | Applies pending `.sql` files from `api/src/db/migrations/`, tracked in the `migrations` table |
 | `npm run migrate:dry` | Lists pending migrations without applying them |
 | `npm run setup:platform-user` | One-time (idempotent) bootstrap of the `ecomm_platform` VPD-exempt DB user + its table synonyms |
+| `npm run seed:platform-admin` | One-time (idempotent) bootstrap of the first Super Admin login (`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD`) |
 
 ## Layout
 
