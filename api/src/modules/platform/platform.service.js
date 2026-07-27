@@ -20,6 +20,8 @@ import {
   setCompanyStatus,
   findDomainById,
   deleteDomainById,
+  listDomainsByCompany,
+  listSettingsByCompany,
 } from './platform.repo.js';
 
 /**
@@ -129,6 +131,16 @@ export async function updateCompany({ id, actorAdminId, ip, ...fields }) {
     await conn.commit();
     return row;
   });
+}
+
+export async function listCompanyDomains({ companyId }) {
+  await getCompany({ id: companyId });
+  return withPlatform((conn) => listDomainsByCompany(conn, companyId));
+}
+
+export async function listCompanySettings({ companyId }) {
+  await getCompany({ id: companyId });
+  return withPlatform((conn) => listSettingsByCompany(conn, companyId));
 }
 
 async function changeCompanyStatus({ id, status, actorAdminId, ip }) {

@@ -207,6 +207,21 @@ describe('company management', () => {
     expect(activateRes.status).toBe(204);
   });
 
+  it('lists a company\'s settings and domains for the detail screen', async () => {
+    const app = createApp();
+    const settingsRes = await request(app)
+      .get(`/platform/companies/${companyId}/settings`)
+      .set('Authorization', `Bearer ${platformToken}`);
+    expect(settingsRes.status).toBe(200);
+    expect(settingsRes.body.settings.some((s) => s.KEY === 'seo_title')).toBe(true);
+
+    const domainsRes = await request(app)
+      .get(`/platform/companies/${companyId}/domains`)
+      .set('Authorization', `Bearer ${platformToken}`);
+    expect(domainsRes.status).toBe(200);
+    expect(domainsRes.body.domains.length).toBeGreaterThan(0);
+  });
+
   it('adds a domain and busts the Redis cache when it is removed', async () => {
     const app = createApp();
     const newHost = `platform-test-extra-${suffix}.example.test`;

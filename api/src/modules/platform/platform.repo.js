@@ -122,6 +122,22 @@ export async function setCompanyStatus(conn, { id, status }) {
   return result.rowsAffected > 0;
 }
 
+export async function listDomainsByCompany(conn, companyId) {
+  const result = await conn.execute(
+    'SELECT id, host, is_primary, created_at FROM domains WHERE company_id = :companyId ORDER BY is_primary DESC, created_at ASC',
+    { companyId },
+  );
+  return result.rows;
+}
+
+export async function listSettingsByCompany(conn, companyId) {
+  const result = await conn.execute(
+    'SELECT id, key, value FROM settings WHERE company_id = :companyId ORDER BY key ASC',
+    { companyId },
+  );
+  return result.rows;
+}
+
 export async function findDomainById(conn, id) {
   const result = await conn.execute('SELECT id, company_id, host FROM domains WHERE id = :id', { id });
   return result.rows[0] ?? null;

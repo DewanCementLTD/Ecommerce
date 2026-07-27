@@ -51,6 +51,24 @@ export async function patchCompany(req, res, next) {
   }
 }
 
+export async function getCompanyDomains(req, res, next) {
+  try {
+    const domains = await platformService.listCompanyDomains({ companyId: Number(req.params.id) });
+    res.json({ domains });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getCompanySettings(req, res, next) {
+  try {
+    const settings = await platformService.listCompanySettings({ companyId: Number(req.params.id) });
+    res.json({ settings });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function postSuspend(req, res, next) {
   try {
     await platformService.suspendCompany({ id: Number(req.params.id), actorAdminId: req.admin.id, ip: req.ip });
