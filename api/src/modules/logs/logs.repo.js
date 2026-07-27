@@ -1,7 +1,12 @@
 /**
- * All callers go through withPlatform() — logs itself has a VPD policy, but
- * every write here needs to set an explicit company_id (including NULL for
- * platform-level actions), not one implied by an already-set context.
+ * `logs` has a VPD policy, and this always sets company_id explicitly rather
+ * than relying on an implied context. Two valid callers:
+ *
+ * - `withPlatform()` for platform-level entries, where company_id may be NULL
+ *   (a NULL would fail the policy's update_check on a company connection).
+ * - `withCompany(companyId)` for company actions, passing that same companyId,
+ *   so the audit entry commits in the same transaction as the change it records
+ *   — a rolled-back product write leaves no log claiming it happened.
  */
 export async function insertLog(conn, { companyId, adminId, action, entity, entityId, meta, ip }) {
   await conn.execute(

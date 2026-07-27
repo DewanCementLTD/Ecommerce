@@ -130,3 +130,27 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** `GET /cats` and `GET /cats/tree` are not paginated. They return every category for the company, capped at 1000 rows. Everything else in Phase 1 (`/products`, `/colls`, `/media`) uses offset pagination with `page`/`pageSize`, `pageSize` capped at 100, returning `{ rows, total, page, pageSize }`.
 **Why:** Task 2 asks for a tree read, and a tree cannot be assembled from a page of rows — the admin's drag-and-drop tree and the storefront's nav both need the complete set in one response. Stores have tens to low hundreds of categories, not thousands. The 1000-row cap keeps a pathological data set from returning something unbounded. Offset (rather than cursor) pagination elsewhere because admin tables need a total row count and page numbers, and storefront listings need crawlable `?page=2` URLs — neither of which a cursor gives cheaply.
 **Alternatives considered:** Paginating the flat list while leaving the tree unpaginated (rejected — two different contracts for the same resource, and no caller wants the paginated one); cursor pagination (rejected — no total, and opaque cursors are bad URLs for SEO).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 3 (fixes Task 1)
+**Decision:** `004_variant_sku_uq.sql` replaces `variants_company_sku_uq UNIQUE (company_id, sku)` with a function-based unique index: `(CASE WHEN sku IS NULL THEN NULL ELSE company_id END, sku)`. The content and i18n migrations shift to `005_` and `006_`.
+**Why:** The original constraint was meant to read "a SKU is unique within a company, and optional". It doesn't. Oracle only omits an index entry when **every** key column is NULL, and `company_id` is never NULL — so two SKU-less variants in one company both index as `(42, NULL)` and the second raises `ORA-00001`. A store could have exactly one product without a SKU. Found by the first run of the products test suite, not by reading the migration. The function-based form nulls the entire key when `sku` is absent, so those rows are not indexed at all while real SKUs stay unique per company — the same technique already used for `variants_one_default_uq`. Delivered as a follow-up migration rather than an edit to `003`, because `003` was already applied and committed; editing an applied migration is a habit worth not starting.
+**Alternatives considered:** Making `sku` NOT NULL and auto-generating one (rejected — invents SKUs for stores that don't use them, and the auto-generated values then have to be unique and meaningful to nobody); dropping SKU uniqueness entirely (rejected — duplicate SKUs in one store are a real data-integrity problem).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 3
+**Decision:** A variant's `opts` JSON is validated in the service against the product's `options` rows — unknown option name, unknown value, and duplicate combinations are all 400s. Variants with **no** option values are exempt from the duplicate check.
+**Why:** `00-SYSTEM-DESIGN.md §4` deliberately stores option definitions as rows (`options`) and the chosen values as JSON on `variants`, and Oracle cannot express a constraint spanning the two. Without a check, a variant could claim `{ Colour: "Red" }` on a product whose only option is Size, and the storefront picker would render something impossible to select. The exemption for empty `opts` came out of the first test run: a product may legitimately have several plain variants told apart by name or SKU ("Pack of 6", "Pack of 12"), and treating them all as the same empty combination made that unbuildable.
+**Alternatives considered:** Normalising variant option values into their own table (rejected — contradicts the system design's stated shape, and a variant's combination is always read as a unit); no validation at all (rejected — the invariant would break silently in the storefront rather than loudly at the API).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 3
+**Decision:** Product audit entries (`product_created`, `product_updated`, `product_deleted`, `product_bulk_*`, `stock_adjusted`) are written through `insertLog` on the **same `withCompany` connection and transaction** as the change itself, rather than through a separate `withPlatform` call.
+**Why:** `00-SYSTEM-DESIGN.md §8` requires an audit trail for product create/update/delete. Writing it in the same transaction means a rolled-back change cannot leave behind a log entry claiming it happened, and a logged change cannot be missing from the data. `logs` has a VPD policy, and passing the same `company_id` the connection is scoped to satisfies its `update_check` — the platform connection is only needed for platform-level entries where `company_id` is NULL. The doc comment on `logs.repo.js` now describes both callers.
+**Alternatives considered:** A second connection via `withPlatform` (rejected — two transactions means the pair can disagree, and it burns a connection from a different pool per write).
