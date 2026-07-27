@@ -1,0 +1,30 @@
+{
+  "name": "storeforge",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "workspaces": [
+    "api",
+    "storefront",
+    "admin",
+    "superadmin"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,storefront,admin -c blue,green,yellow \"npm run dev --workspace=api\" \"npm run dev --workspace=storefront\" \"npm run dev --workspace=admin\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "test": "npm run test --workspaces --if-present",
+    "test:isolation": "npm run test:isolation --workspace=api --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "eslint": "^9.15.0",
+    "@eslint/js": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3"
+  }
+}
