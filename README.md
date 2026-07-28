@@ -38,6 +38,11 @@ npm run dev
 | `npm run setup:platform-user` | One-time (idempotent) bootstrap of the `ecomm_platform` VPD-exempt DB user + its table synonyms |
 | `npm run seed:platform-admin` | One-time (idempotent) bootstrap of the first Super Admin login (`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD`) |
 | `npm run seed:demo` | One-time (idempotent) two demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` |
+| `npm run seed:demo-catalog` | Fills the demo stores with categories, products, banners and wired-up home sections (images generated locally, no network) |
+| `npm run ui:check <url>...` | Screenshots pages at 375px and 1440px and fails on horizontal overflow, missing alt text, unnamed buttons, broken images or a missing `h1` |
+
+Storefront performance claims must be measured against a production build
+(`next build && next start`), never the dev server: `node scripts/lighthouse.js <url>`.
 
 ## The isolation suite is the release gate
 
