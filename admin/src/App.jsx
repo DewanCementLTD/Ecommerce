@@ -17,6 +17,8 @@ import { PageSectionsPage } from './pages/pages/PageSectionsPage.jsx';
 import { BannersPage } from './pages/content/BannersPage.jsx';
 import { MenusPage } from './pages/content/MenusPage.jsx';
 import { LanguagesPage } from './pages/content/LanguagesPage.jsx';
+import { SettingsPage } from './pages/settings/SettingsPage.jsx';
+import { StaffPage } from './pages/staff/StaffPage.jsx';
 
 export default function App() {
   return (
@@ -47,8 +49,8 @@ export default function App() {
             <Route path="/menus" element={<MenusPage />} />
             <Route path="/translations" element={<LanguagesPage />} />
             <Route path="/orders" element={<ComingSoonPage title="Orders" />} />
-            <Route path="/settings" element={<ComingSoonPage title="Settings" />} />
-            <Route path="/staff" element={<ComingSoonPage title="Staff" />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/staff" element={<StaffPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

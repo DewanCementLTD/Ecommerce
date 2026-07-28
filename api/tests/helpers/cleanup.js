@@ -32,6 +32,7 @@ const DELETE_ORDER = [
   'DELETE FROM media WHERE company_id = :id',
   'DELETE FROM logs WHERE company_id = :id',
   'DELETE FROM settings WHERE company_id = :id',
+  'DELETE FROM roles WHERE company_id = :id',
   'DELETE FROM langs WHERE company_id = :id',
   'DELETE FROM admins WHERE company_id = :id',
   'DELETE FROM domains WHERE company_id = :id',

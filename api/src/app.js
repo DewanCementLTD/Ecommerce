@@ -24,6 +24,8 @@ import {
   menuItemsRouter,
 } from './modules/content/content.routes.js';
 import { langsRouter, transRouter } from './modules/i18n/i18n.routes.js';
+import { settingsRouter } from './modules/settings/settings.routes.js';
+import { adminsRouter, rolesRouter } from './modules/staff/staff.routes.js';
 
 export function createApp() {
   const app = express();
@@ -52,6 +54,9 @@ export function createApp() {
   app.use('/menu-items', requireAuth, requireCompany, menuItemsRouter);
   app.use('/langs', requireAuth, requireCompany, langsRouter);
   app.use('/trans', requireAuth, requireCompany, transRouter);
+  app.use('/settings', requireAuth, requireCompany, settingsRouter);
+  app.use('/admins', requireAuth, requireCompany, adminsRouter);
+  app.use('/roles', requireAuth, requireCompany, rolesRouter);
   app.use('/platform', requireAuth, requireRole('platform'), platformRouter);
 
   app.use((req, res) => {
