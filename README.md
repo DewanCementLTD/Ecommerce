@@ -39,6 +39,8 @@ npm run dev
 | `npm run seed:platform-admin` | One-time (idempotent) bootstrap of the first Super Admin login (`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD`) |
 | `npm run seed:demo` | One-time (idempotent) two demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` |
 | `npm run seed:demo-catalog` | Fills the demo stores with categories, products, banners and wired-up home sections (images generated locally, no network) |
+| `npm run backfill:order-seq` | One-time (idempotent) — seeds the per-company order-number counter for any company provisioned before `007_commerce.sql` |
+| `npm run carts:cleanup` | Deletes expired (30-day) carts across every company. No scheduler wired up yet — see `docs/BACKLOG.md` |
 | `npm run ui:check <url>...` | Screenshots pages at 375px and 1440px and fails on horizontal overflow, missing alt text, unnamed buttons, broken images or a missing `h1` |
 
 Storefront performance claims must be measured against a production build

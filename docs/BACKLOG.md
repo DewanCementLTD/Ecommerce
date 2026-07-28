@@ -28,12 +28,23 @@ Until one of these is set up, `npm run test:isolation` is a manual, pre-release 
 
 ---
 
-## Client admin SPA — Task 7 of Phase 1 (not built)
+## Wire `scripts/cleanup-expired-carts.js` into a scheduler (Phase 2)
 
-Not a backlog item by choice: it is unfinished phase work, recorded here so it is not
-lost. `admin/` is still the Task 1 placeholder. Every endpoint it needs exists and is
-tested — see `docs/PHASE-1-REPORT.md` for the endpoint-to-screen mapping and the
-5–6 day estimate. Two Phase 1 exit criteria cannot be met until it is built.
+The 30-day cart expiry cleanup exists and works (one `DELETE` across every company via
+`withPlatform`) but nothing calls it on a schedule — no cron exists on this dev host.
+Wire it into whatever process manager/scheduler Phase 3 picks for production (Task
+Scheduler, cron, PM2's scheduled jobs, etc.).
+
+---
+
+## Real SMTP send, unverified (Phase 2)
+
+`modules/mail/` defaults to a `log` provider (no SMTP catcher on this box) and has a
+working `smtp` provider via `nodemailer` behind the same interface, selected by
+`EMAIL_PROVIDER=smtp` plus the `SMTP_*` vars in `.env`. The templates are verified to
+render correctly (en and ar, both inspected via the log provider's output); an actual
+send through a real mail server has not been. Do one real end-to-end send before
+trusting this in production.
 
 ---
 
