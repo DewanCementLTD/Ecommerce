@@ -5,7 +5,6 @@ import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { Layout } from './components/Layout.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
-import { ComingSoonPage } from './pages/ComingSoonPage.jsx';
 import { ProductsListPage } from './pages/products/ProductsListPage.jsx';
 import { ProductEditorPage } from './pages/products/ProductEditorPage.jsx';
 import { CategoriesPage } from './pages/categories/CategoriesPage.jsx';
@@ -19,6 +18,9 @@ import { MenusPage } from './pages/content/MenusPage.jsx';
 import { LanguagesPage } from './pages/content/LanguagesPage.jsx';
 import { SettingsPage } from './pages/settings/SettingsPage.jsx';
 import { StaffPage } from './pages/staff/StaffPage.jsx';
+import { OrdersListPage } from './pages/orders/OrdersListPage.jsx';
+import { OrderDetailPage } from './pages/orders/OrderDetailPage.jsx';
+import { CustomersPage } from './pages/customers/CustomersPage.jsx';
 
 export default function App() {
   return (
@@ -48,7 +50,9 @@ export default function App() {
             <Route path="/banners" element={<BannersPage />} />
             <Route path="/menus" element={<MenusPage />} />
             <Route path="/translations" element={<LanguagesPage />} />
-            <Route path="/orders" element={<ComingSoonPage title="Orders" />} />
+            <Route path="/orders" element={<OrdersListPage />} />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/customers" element={<CustomersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/staff" element={<StaffPage />} />
           </Route>

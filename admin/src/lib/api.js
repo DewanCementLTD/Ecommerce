@@ -163,11 +163,29 @@ export const api = {
   getOrder: (token, id) => request(`/orders/${id}`, { token }),
   patchOrderStatus: (token, id, body) => request(`/orders/${id}/status`, { method: 'PATCH', token, body }),
   patchOrder: (token, id, body) => request(`/orders/${id}`, { method: 'PATCH', token, body }),
-  ordersExportUrl: (token, params) => `${API_URL}/orders/export${qs(params)}`,
+  exportOrders: (token, params) => downloadFile(`${API_URL}/orders/export${qs(params)}`, token, 'orders.csv'),
 
   // --- dashboard (Part B) ---
   getDashboardSummary: (token, params) => request(`/dashboard/summary${qs(params)}`, { token }),
+
+  // --- customers (Part B) ---
+  listCustomers: (token, params) => request(`/customers${qs(params)}`, { token }),
+  getCustomer: (token, id) => request(`/customers/${id}`, { token }),
+  patchCustomer: (token, id, body) => request(`/customers/${id}`, { method: 'PATCH', token, body }),
 };
+
+/** CSV export needs the Bearer header, so it can't be a plain <a href> link. */
+async function downloadFile(url, token, filename) {
+  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new ApiError(res.status, 'DOWNLOAD_FAILED', 'Export failed.');
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
 
 function uploadFile(url, token, file, onProgress) {
   return new Promise((resolve, reject) => {

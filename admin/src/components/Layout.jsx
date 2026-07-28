@@ -23,7 +23,10 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Sales',
-    items: [{ to: '/orders', label: 'Orders' }],
+    items: [
+      { to: '/orders', label: 'Orders' },
+      { to: '/customers', label: 'Customers' },
+    ],
   },
   {
     label: 'Store',
