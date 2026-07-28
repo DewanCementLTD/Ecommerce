@@ -15,6 +15,13 @@ function Logo({ company, hrefBase }) {
         <img
           src={mediaUrl(company.logoUrl, 320)}
           alt={company.name}
+          /*
+           * The only image on the storefront without a CSS aspect ratio
+           * reserving its box, so it is the only one that can shift the layout
+           * while it loads. The intrinsic size comes from the media row.
+           */
+          width={company.logoWidth ?? undefined}
+          height={company.logoHeight ?? undefined}
           className="h-9 w-auto max-w-[10rem] object-contain"
         />
       ) : (

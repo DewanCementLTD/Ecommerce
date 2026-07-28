@@ -35,8 +35,18 @@ export async function uploadMedia({ companyId, buffer, originalFilename, alt, fo
 
   for (const width of widthsToGenerate) {
     // sharp() strips EXIF/metadata by default (only kept if .withMetadata() is called)
-    const variantBuffer = await sharp(buffer).resize({ width, withoutEnlargement: true }).webp().toBuffer();
-    await writeVariant(storageKey, width, variantBuffer);
+    const resized = sharp(buffer).resize({ width, withoutEnlargement: true });
+
+    // Both formats, every width. AVIF is the slow one — `effort: 4` (of 9)
+    // keeps a four-width upload in the low seconds rather than the tens of
+    // seconds the default would cost, for a file-size difference under 3%.
+    const [webp, avif] = await Promise.all([
+      resized.clone().webp().toBuffer(),
+      resized.clone().avif({ effort: 4 }).toBuffer(),
+    ]);
+
+    await writeVariant(storageKey, width, webp, 'webp');
+    await writeVariant(storageKey, width, avif, 'avif');
   }
 
   return withCompany(companyId, async (conn) => {

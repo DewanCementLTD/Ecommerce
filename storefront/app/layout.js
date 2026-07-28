@@ -13,6 +13,7 @@ import { JsonLd } from '../components/JsonLd.jsx';
 import {
   absolute,
   canonicalOrigin,
+  faviconFor,
   languageAlternates,
   organizationLd,
   socialMeta,
@@ -46,6 +47,7 @@ export async function generateMetadata() {
   const title = company.seoTitle || company.name;
   const description = company.seoDescription || `Shop online at ${company.name}.`;
   const ogImage = company.ogImageUrl ?? company.logoUrl;
+  const icon = faviconFor(company, store.tokens);
 
   /**
    * A suspended store and a secondary domain both stay out of the index: the
@@ -59,6 +61,7 @@ export async function generateMetadata() {
     metadataBase,
     title: { default: title, template: `%s | ${company.name}` },
     description,
+    icons: { icon, shortcut: icon, apple: icon },
     robots: indexable
       ? { index: true, follow: true }
       : { index: false, follow: false, googleBot: { index: false, follow: false } },

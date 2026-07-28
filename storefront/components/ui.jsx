@@ -87,15 +87,27 @@ export function ProductCard({ product, currency, hrefBase = '' }) {
   );
 }
 
-export function ProductGrid({ products, currency, hrefBase = '' }) {
+export function ProductGrid({ products, currency, hrefBase = '', label = 'Products' }) {
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4 md:grid-cols-3">
-      {products.map((product) => (
-        <li key={product.id}>
-          <ProductCard product={product} currency={currency} hrefBase={hrefBase} />
-        </li>
-      ))}
-    </ul>
+    <section aria-labelledby="product-grid-heading">
+      {/*
+        Card titles are h3 — the right visual weight, and the right level *if*
+        something sits between them and the page's h1. Without this heading the
+        outline jumped h1 → h3, which Lighthouse flags ("heading elements are
+        not in a sequentially-descending order") and which leaves a screen
+        reader with a grid of items belonging to nothing.
+      */}
+      <h2 id="product-grid-heading" className="sr-only">
+        {label}
+      </h2>
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4 md:grid-cols-3">
+        {products.map((product) => (
+          <li key={product.id}>
+            <ProductCard product={product} currency={currency} hrefBase={hrefBase} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

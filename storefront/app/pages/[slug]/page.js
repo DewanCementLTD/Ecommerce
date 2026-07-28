@@ -6,6 +6,8 @@ import { JsonLd } from '../../../components/JsonLd.jsx';
 import {
   absolute,
   breadcrumbLd,
+  describe,
+  textFromHtml,
   canonicalOrigin,
   languageAlternates,
   pageTitle,
@@ -24,7 +26,11 @@ export async function generateMetadata({ params }) {
   const url = `${origin}${path}`;
 
   const title = page.metaTitle || page.title;
-  const description = page.metaDesc || undefined;
+  const description = describe(
+    page.metaDesc,
+    textFromHtml(page.content),
+    `${page.title} — ${ctx.company.name}.`,
+  );
 
   return {
     title,

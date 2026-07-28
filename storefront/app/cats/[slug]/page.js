@@ -1,12 +1,13 @@
 import { notFound } from 'next/navigation';
 import { apiGet } from '../../../lib/api.js';
-import { pageContext } from '../../../lib/page-context.js';
+import { pageContext, pageQuery } from '../../../lib/page-context.js';
 import { ProductGrid, EmptyState, Pagination, Button } from '../../../components/ui.jsx';
 import { Filters } from '../../../components/Filters.jsx';
 import { JsonLd } from '../../../components/JsonLd.jsx';
 import {
   absolute,
   breadcrumbLd,
+  describe,
   canonicalOrigin,
   languageAlternates,
   pageTitle,
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }) {
   const res = await apiGet(`/shop/cats/${slug}`, { searchParams: { lang: ctx.lang } });
   if (!res.data || !ctx.company) return {};
 
-  const { cat } = res.data;
+  const { cat, products } = res.data;
   const origin = await canonicalOrigin(ctx.company);
   const path = `/cats/${cat.slug}`;
   // Deliberately without `?page`/`?sort`/filter params: page 2 of a category is
@@ -28,7 +29,11 @@ export async function generateMetadata({ params }) {
   const url = `${origin}${path}`;
 
   const title = cat.metaTitle || cat.name;
-  const description = cat.metaDesc || cat.descr || undefined;
+  const description = describe(
+    cat.metaDesc,
+    cat.descr,
+    `Browse ${cat.name} at ${ctx.company.name}. ${products.total} product${products.total === 1 ? '' : 's'} to choose from.`,
+  );
 
   return {
     title,
@@ -52,9 +57,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function CategoryPage({ params, searchParams }) {
+export default async function CategoryPage({ params }) {
   const { slug } = await params;
-  const query = await searchParams;
+  const query = await pageQuery();
   const ctx = await pageContext();
   if (!ctx.company) return null;
 

@@ -17,3 +17,16 @@ export async function pageContext() {
     currency: store.company?.currency ?? null,
   };
 }
+
+/**
+ * The current query string, read from the header `middleware.js` publishes
+ * rather than from Next's `searchParams` prop.
+ *
+ * Using the prop wraps the route in a Suspense boundary and pushes all of its
+ * metadata out of `<head>` (see the note in middleware.js). Same values, same
+ * dynamic-rendering behaviour, without that side effect.
+ */
+export async function pageQuery() {
+  const headersList = await headers();
+  return Object.fromEntries(new URLSearchParams(headersList.get('x-sf-query') ?? ''));
+}

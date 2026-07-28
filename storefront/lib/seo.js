@@ -67,6 +67,63 @@ export function pageTitle(title, storeName) {
 }
 
 /**
+ * A per-store favicon.
+ *
+ * Every store on this platform answers on its own domain, so a single checked-in
+ * `favicon.ico` would be both wrong (one client's mark on another's tab) and a
+ * hardcoded asset, which this project does not do. A store with a logo uses it;
+ * a store without one gets a generated mark — its initial on its own primary
+ * colour, inline as a data URI, so it costs no request.
+ *
+ * Without an explicit icon the browser requests `/favicon.ico` unprompted,
+ * gets a 404, and logs a console error — which is exactly how this was found
+ * (Lighthouse's "browser errors were logged to the console", chased down with
+ * `npm run ui:check`).
+ */
+export function faviconFor(company, tokens) {
+  if (company?.logoUrl) return company.logoUrl;
+
+  const initial = (company?.name ?? '?').trim().charAt(0).toUpperCase() || '?';
+  const background = tokens?.color?.primary ?? '#111111';
+  const foreground = tokens?.color?.primaryText ?? '#ffffff';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="${background}"/><text x="50%" y="50%" dy="0.35em" text-anchor="middle" font-family="system-ui,sans-serif" font-size="38" font-weight="700" fill="${foreground}">${initial}</text></svg>`;
+
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * A description for a page whose owner has not written one.
+ *
+ * Never returns undefined. A page with no `<meta name="description">` is a
+ * page whose snippet the search engine writes for you out of whatever text it
+ * finds first — and Lighthouse scores it as a defect, which is how this was
+ * found: category pages inherited nothing, because a child route that omits
+ * `description` does not fall back to the layout's.
+ *
+ * `parts` are tried in order; the last one should always be a generated
+ * sentence built from the store's own data.
+ */
+export function describe(...parts) {
+  for (const part of parts) {
+    if (typeof part === 'string' && part.trim()) return part.trim().slice(0, 300);
+  }
+  return undefined;
+}
+
+/** Strips tags from CMS HTML so a page's own content can seed its description. */
+export function textFromHtml(html, limit = 160) {
+  if (!html) return '';
+  const text = String(html)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text;
+}
+
+/**
  * Shared Open Graph + Twitter block. Twitter falls back to the OG values for
  * everything it can, so a page only ever has to describe itself once.
  */

@@ -23,6 +23,21 @@ const API_URL = process.env.API_URL ?? 'http://localhost:8003';
  * way `_next`/`fonts`/`favicon.ico` already are — this middleware never runs
  * for those paths at all.
  *
+ * ## Why the query string is published as a header
+ *
+ * A page that awaits Next's `searchParams` prop is automatically wrapped in a
+ * Suspense boundary, which flushes the HTML shell before `generateMetadata`
+ * has resolved — and every `<title>`, `<meta>` and `<link rel=canonical>` then
+ * lands in `<body>` instead of `<head>`. Browsers hoist them, so the page
+ * *looks* fine; Lighthouse's SEO audits read `head meta` and scored the
+ * category pages as having no description at all, which is also what a strict
+ * crawler or a social-preview scraper sees.
+ *
+ * Reading the query from a header instead keeps those routes on the
+ * single-pass render that puts metadata where it belongs. `headers()` is just
+ * as dynamic — nothing is being cached that should not be — it simply does not
+ * trigger the boundary.
+ *
  * ## Canonical domain
  *
  * A company can own several hosts; exactly one is flagged primary. Requests on
@@ -96,6 +111,7 @@ export async function middleware(request) {
     // Next 15 gives a layout no way to read the current pathname, and the
     // hreflang alternates and language switcher both need it.
     headers.set('x-sf-path', pathname);
+    headers.set('x-sf-query', request.nextUrl.search.slice(1));
     return NextResponse.next({ request: { headers } });
   }
 
@@ -104,6 +120,7 @@ export async function middleware(request) {
 
   headers.set('x-sf-lang', first.toLowerCase());
   headers.set('x-sf-path', url.pathname);
+  headers.set('x-sf-query', request.nextUrl.search.slice(1));
 
   return NextResponse.rewrite(url, { request: { headers } });
 }

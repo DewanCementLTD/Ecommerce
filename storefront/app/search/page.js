@@ -1,5 +1,5 @@
 import { apiGet } from '../../lib/api.js';
-import { pageContext } from '../../lib/page-context.js';
+import { pageContext, pageQuery } from '../../lib/page-context.js';
 import { ProductGrid, EmptyState, Pagination, Button } from '../../components/ui.jsx';
 
 /**
@@ -14,8 +14,8 @@ export const metadata = {
   robots: { index: false, follow: true, googleBot: { index: false, follow: true } },
 };
 
-export default async function SearchPage({ searchParams }) {
-  const query = await searchParams;
+export default async function SearchPage() {
+  const query = await pageQuery();
   const ctx = await pageContext();
   if (!ctx.company) return null;
 

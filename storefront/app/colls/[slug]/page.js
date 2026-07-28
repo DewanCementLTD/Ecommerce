@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation';
 import { apiGet } from '../../../lib/api.js';
-import { pageContext } from '../../../lib/page-context.js';
+import { pageContext, pageQuery } from '../../../lib/page-context.js';
 import { ProductGrid, EmptyState, Pagination, Button } from '../../../components/ui.jsx';
 import { JsonLd } from '../../../components/JsonLd.jsx';
 import {
   absolute,
   breadcrumbLd,
+  describe,
   canonicalOrigin,
   languageAlternates,
   pageTitle,
@@ -22,7 +23,10 @@ export async function generateMetadata({ params }) {
   const origin = await canonicalOrigin(ctx.company);
   const path = `/colls/${coll.slug}`;
   const url = `${origin}${path}`;
-  const description = coll.descr || undefined;
+  const description = describe(
+    coll.descr,
+    `The ${coll.name} collection at ${ctx.company.name}.`,
+  );
 
   return {
     title: coll.name,
@@ -48,9 +52,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function CollectionPage({ params, searchParams }) {
+export default async function CollectionPage({ params }) {
   const { slug } = await params;
-  const query = await searchParams;
+  const query = await pageQuery();
   const ctx = await pageContext();
   if (!ctx.company) return null;
 

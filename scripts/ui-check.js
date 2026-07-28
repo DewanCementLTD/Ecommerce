@@ -60,7 +60,18 @@ function auditInPage() {
     (img) => img.complete && img.naturalWidth === 0,
   ).length;
 
+  // Cheap SEO essentials, checked in the same pass. Lighthouse scores these
+  // too but will not say which page failed when you are checking six at once.
+  // Scoped to <head> on purpose. A <meta> streamed into <body> still works in
+  // a browser (it gets hoisted), but Lighthouse's SEO audits and strict
+  // crawlers read `head meta` — so "present somewhere in the document" is the
+  // wrong question, and asking it hid a real defect for a while.
+  const metaDescription = document.querySelector('head meta[name="description"]')?.content?.trim() ?? '';
+  const canonical = document.querySelector('head link[rel="canonical"]')?.href ?? '';
+
   return {
+    metaDescription,
+    canonical,
     docWidth,
     viewport,
     overflow: docWidth > viewport + 1,
@@ -88,6 +99,35 @@ async function run() {
   for (const url of urls) {
     for (const width of widths) {
       const page = await browser.newPage();
+
+      /*
+       * Console errors, page exceptions and failed sub-requests.
+       *
+       * Lighthouse scores "browser errors were logged to the console" but will
+       * not tell you which, and a storefront that renders correctly while
+       * throwing on hydration is a storefront one browser version away from
+       * not rendering at all. Collected here because this script is already
+       * driving a real browser at the real page.
+       */
+      const consoleProblems = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error') consoleProblems.push(`console: ${message.text().slice(0, 160)}`);
+      });
+      page.on('pageerror', (err) => consoleProblems.push(`exception: ${err.message.slice(0, 160)}`));
+      page.on('requestfailed', (request) => {
+        const reason = request.failure()?.errorText ?? 'unknown';
+        // ERR_ABORTED on a `?_rsc=` URL is Next cancelling its own link
+        // prefetch once it has what it needs — normal browser behaviour, not a
+        // fault, and reporting it would train everyone to ignore this list.
+        if (reason === 'net::ERR_ABORTED' && request.url().includes('_rsc=')) return;
+        consoleProblems.push(`request failed (${reason}): ${request.url().slice(0, 110)}`);
+      });
+      page.on('response', (response) => {
+        if (response.status() >= 400) {
+          consoleProblems.push(`http ${response.status()}: ${response.url().slice(0, 120)}`);
+        }
+      });
+
       await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
 
@@ -101,6 +141,9 @@ async function run() {
       if (audit.buttonsWithoutName) problems.push(`${audit.buttonsWithoutName} unnamed button`);
       if (audit.brokenImages) problems.push(`${audit.brokenImages} broken image`);
       if (audit.h1s !== 1) problems.push(`${audit.h1s} h1 elements`);
+      if (consoleProblems.length) problems.push(`${consoleProblems.length} console error(s)`);
+      if (!audit.metaDescription) problems.push('no meta description');
+      if (!audit.canonical) problems.push('no canonical');
 
       if (problems.length) failures += 1;
       console.log(
@@ -108,6 +151,9 @@ async function run() {
       );
       for (const offender of audit.offenders) {
         console.log(`         -> <${offender.tag}> w=${offender.width} right=${offender.right} ${offender.cls}`);
+      }
+      for (const problem of [...new Set(consoleProblems)].slice(0, 6)) {
+        console.log(`         -> ${problem}`);
       }
 
       await page.close();

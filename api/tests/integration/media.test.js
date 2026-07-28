@@ -5,12 +5,13 @@ import request from 'supertest';
 import { existsSync } from 'node:fs';
 import { createApp } from '../../src/app.js';
 import { initPool, closePool, withPlatform } from '../../src/db/pool.js';
-import { closeRedis } from '../../src/lib/redis.js';
+import { closeRedis, getRedis } from '../../src/lib/redis.js';
 import { variantPath } from '../../src/lib/mediaStorage.js';
 
 const suffix = Date.now();
 const password = 'correct horse battery staple';
 const emailA = `media-test-a-${suffix}@example.test`;
+const hostA = `media-${suffix}.localhost`;
 
 let companyAId;
 let adminAId;
@@ -30,6 +31,11 @@ async function seedAdmin(conn, { name, email, passHash }) {
     { companyId, email, passHash },
   );
   const admin = await conn.execute('SELECT id FROM admins WHERE email = :email', { email });
+
+  await conn.execute('INSERT INTO domains (company_id, host, is_primary) VALUES (:companyId, :host, 1)', {
+    companyId,
+    host: hostA,
+  });
 
   await conn.commit();
   return { companyId, adminId: admin.rows[0].ID };
@@ -51,7 +57,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await getRedis().del(`sf:host:${hostA}`);
   await withPlatform(async (conn) => {
+    await conn.execute('DELETE FROM domains WHERE company_id = :a', { a: companyAId });
     await conn.execute('DELETE FROM media WHERE company_id = :a', { a: companyAId });
     await conn.execute('DELETE FROM logs WHERE admin_id = :a', { a: adminAId });
     await conn.execute('DELETE FROM admins WHERE id = :a', { a: adminAId });
@@ -86,8 +94,13 @@ describe('media upload', () => {
     expect(res.body.media.WIDTH).toBe(800);
     expect(res.body.media.FOLDER).toBe('products');
 
-    expect(existsSync(variantPath(res.body.media.STORAGE_KEY, 320))).toBe(true);
-    expect(existsSync(variantPath(res.body.media.STORAGE_KEY, 640))).toBe(true);
+    // Both formats, every width: the serving side negotiates between them
+    // from the browser's Accept header, so a missing AVIF variant would
+    // silently mean nobody ever gets the smaller file.
+    for (const width of [320, 640]) {
+      expect(existsSync(variantPath(res.body.media.STORAGE_KEY, width, 'webp')), `webp ${width}`).toBe(true);
+      expect(existsSync(variantPath(res.body.media.STORAGE_KEY, width, 'avif')), `avif ${width}`).toBe(true);
+    }
 
     const notAnImage = await request(app)
       .post('/media')
@@ -126,5 +139,47 @@ describe('media upload', () => {
 
     const afterDelete = await request(app).get(`/media/${mediaId}`).set('Authorization', `Bearer ${tokenA}`);
     expect(afterDelete.status).toBe(404);
+  });
+});
+
+describe('public media serving negotiates AVIF against WebP', () => {
+  let mediaId;
+  let app;
+
+  beforeAll(async () => {
+    app = createApp();
+    const image = await makeTestImage();
+    const res = await request(app)
+      .post('/media')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .attach('file', image, 'negotiated.png');
+    mediaId = res.body.media.ID;
+  });
+
+  const fetchImage = (accept) => {
+    const req = request(app)
+      .get(`/storefront/media/${mediaId}/file?width=320`)
+      .set('X-Forwarded-Host', hostA);
+    return accept ? req.set('Accept', accept) : req;
+  };
+
+  it('serves AVIF to a browser that accepts it', async () => {
+    const res = await fetchImage('image/avif,image/webp,*/*');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('image/avif');
+  });
+
+  it('serves WebP to a browser that does not', async () => {
+    const res = await fetchImage('image/webp,*/*');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('image/webp');
+  });
+
+  it('always says Vary: Accept, because both answers share one URL', async () => {
+    // Without this header a shared cache in front of the API would serve an
+    // AVIF body to a browser that cannot decode it — same URL, different
+    // bytes.
+    const res = await fetchImage('image/webp,*/*');
+    expect(res.headers.vary).toContain('Accept');
   });
 });

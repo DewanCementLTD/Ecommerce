@@ -210,3 +210,59 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** `GET /shop/sitemap` is a new public endpoint returning every indexable path for the resolved store in one call; `storefront/app/sitemap.js` renders it and expands each path into its `hreflang` alternates. Product/Offer JSON-LD moved out of `components/ProductDetail.jsx` (a client component) into the page, via `lib/seo.js`.
 **Why:** The Phase 1 sitemap walked `/shop/products?pageSize=48` and so silently listed at most 48 products, no collections, and no CMS pages; a complete sitemap cannot be assembled from paged HTTP endpoints without N round trips, so the walking happens on the database side of the boundary. The JSON-LD move fixes two real defects: the client component emitted **relative** image URLs (invalid in structured data), and once the server started emitting a Product block there were two conflicting `Product` objects on the same page. `offers` is omitted entirely when the store has no `currency` set, because an offer with a price and no `priceCurrency` is invalid — and guessing a currency for a client's store would be worse than saying nothing.
 **Alternatives considered:** A sitemap index with one child sitemap per language (rejected — a translated product is the same URL in another language, which is what `alternates.languages` already expresses; an index is for stores past ~50k URLs, which is a different feature); keeping the JSON-LD in the client component and making its image URLs absolute there (rejected — a client component cannot see the request's host, so it cannot know the canonical origin at all).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** Cache invalidation is one `cacheBust` middleware on every successful non-GET request, not an `invalidate()` call at the end of each mutating service function. It drops that company's `menus` and `sections` entries wholesale and asks the storefront to drop its `sf:{host}` fetch-cache tag.
+**Why:** The precise version — "a product save invalidates sections but not menus, a category rename invalidates both" — is a mapping that has to be re-derived every time an endpoint is added, and the failure mode of forgetting is a client who saves a price and does not see it change. That gets diagnosed as "the cache is broken, turn it off," which costs more than the extra rebuild a coarse invalidation costs. One hook cannot be forgotten. It reads `req.companyId ?? req.admin?.companyId` because those are two different middlewares' outputs, and reading only the first silently covered no admin write at all — found by driving a real settings save end to end, not by the tests.
+**Alternatives considered:** Per-service `invalidate()` calls (rejected as above); a background sweep (rejected — a cache invalidated asynchronously serves stale data for however long the sweep takes, which is the one thing invalidation exists to prevent).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** Every Redis key in the API is now either `co:{id}:...` (company-owned) or `sf:...` (platform-level), including the admin-auth, customer-auth and checkout keys that predate this phase. `companyKey()` throws on an id it does not believe. `tests/integration/cache.test.js` records every key the API touches while serving real traffic and fails on any that lacks a prefix, with a negative control proving the recorder bites.
+**Why:** `00-SYSTEM-DESIGN.md §7` says a missing prefix is a cross-tenant bug, and the phase brief asks for a test that fails without one. A rule with three exceptions is not a rule you can test, so the exceptions were removed rather than allow-listed; the recorder hooks `sendCommand`, which every ioredis call including pipelined ones funnels through, so a service that builds a raw key by hand is still caught.
+**Alternatives considered:** Asserting over `KEYS *` before and after (rejected — this Redis is shared with other projects on the box, so other apps' keys would be false positives, and `KEYS` blocks the server); checking only keys written through `lib/cache.js` (rejected — that tests the helper, not the codebase, and the bug being guarded against is precisely code that bypasses the helper).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** Prefix-scoped invalidation is backed by a per-company set of live key names (`co:{id}:idx`), not by `KEYS`/`SCAN`.
+**Why:** Several cached values are per language (`menus:en`, `menus:ar`) or per page (`sections:about`), so invalidation must be able to say "every menu for this company" without knowing which languages exist. `KEYS` blocks the Redis server for the duration; `SCAN` is O(whole keyspace) for something that runs on every settings save, on a Redis this box shares with other projects. A set we maintain ourselves is bounded by what we actually wrote.
+**Alternatives considered:** A per-company generation counter in the key (`co:{id}:v7:menus:en`) (rejected — costs an extra round trip on every *read* to learn the current generation, and reads outnumber invalidations by orders of magnitude).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** The load-test store (`scripts/seed-loadtest.js`) seeds 10k products and 2k orders for one company **and 4k orders each for five "filler" companies**.
+**Why:** The first `EXPLAIN PLAN` run against a single load-test company reported full table scans on `orders` — and the optimizer was right: that company owned 100% of the rows, so `WHERE company_id = :1` selected the whole table, and no index can beat reading a table you need all of. "No full table scans on orders" is only a meaningful criterion when a tenant is a minority of the rows, which is what production looks like. With the filler tenants (2,000 of 22,000 rows, about 9%) the same two queries switch to index range scans and the criterion means something.
+**Alternatives considered:** Declaring the criterion met against the ten-product demo store (rejected — every plan is cheap at that size and the result would be noise); hinting the queries (rejected — a hint that only helps because the data is unrealistic is worse than no index).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** No index on `orders(company_id, customer_id, placed_at)`, and the admin order list still shows a `WINDOW SORT`.
+**Why:** `placed_at` is `TIMESTAMP WITH TIME ZONE`, which Oracle cannot index directly — it silently builds a function-based index over a hidden `SYS_NC...$` column holding `SYS_EXTRACT_UTC(placed_at)`. The optimizer does not treat that expression as equivalent to `ORDER BY placed_at` for ordering purposes, so such an index cannot eliminate a sort. It was created, measured (the plan kept choosing the existing two-column `orders_company_customer_ix`), and dropped rather than shipped as decoration. `orders(company_id, placed_at)` **is** kept: it is chosen for the dashboard's `placed_at >= :from` range scan, which is what it was added for.
+**Alternatives considered:** Keeping it anyway "for safety" (rejected — an unused index costs every insert and misleads the next person reading the schema).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** The storefront moved from React 18.3 to React 19, with a root `overrides` entry pinning a single React copy across all four workspaces.
+**Why:** Next 15's App Router expects React 19. On React 18 the metadata Next renders into `<head>` server-side was **relocated into `<body>` during hydration**, because React 18 has no hoisting for `<title>`/`<meta>`/`<link>`: the served HTML was correct and the hydrated DOM was not, which is why it went unnoticed — it only shows up in a tool that reads `head meta` after running JavaScript. Upgrading only the storefront produced React error #31 at build time (`next` resolved the hoisted React 18 at the root while app code resolved 19 from its own `node_modules`), so the override is what makes it one copy rather than two.
+**Alternatives considered:** Staying on React 18 and accepting the hydration-time relocation (rejected — it breaks the tags for anything that reads the rendered DOM); upgrading the storefront alone (rejected — proven broken, two React copies in one render).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-3, Task 2
+**Decision:** `app/loading.js` was removed, and the routes that took Next's `searchParams` prop now read the query string from a header `middleware.js` publishes (`x-sf-query`, alongside the `x-sf-path` it already published).
+**Why:** Both create a Suspense boundary around the page, and a Suspense boundary makes Next flush the HTML shell before `generateMetadata` has resolved — putting every `<title>`, `<meta>` and `<link rel=canonical>` into `<body>` instead of `<head>`. Browsers hoist them so the site looks fine, but Lighthouse's SEO audits read `head meta`, and social-preview scrapers (Facebook, WhatsApp, LinkedIn) do not run JavaScript at all, so Open Graph tags in the body mean broken link previews. Reading the query from a header is just as dynamic and does not trigger the boundary. **This did not fully fix it** — see `docs/BACKLOG.md`: with a warm cache Next still streams metadata into the body, and Lighthouse SEO sits at 92 against a 95 target.
+**Alternatives considered:** Keeping `loading.js` for its navigation skeletons (rejected — an SEO defect on an e-commerce storefront outweighs a skeleton on a page that renders in about 40ms); rendering the tags as JSX and relying on React 19 hoisting (not adopted — the hoisting happens at the same point in the stream, so it inherits the same race).

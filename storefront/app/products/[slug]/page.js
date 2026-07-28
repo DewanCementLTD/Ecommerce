@@ -6,6 +6,7 @@ import { JsonLd } from '../../../components/JsonLd.jsx';
 import {
   absolute,
   breadcrumbLd,
+  describe,
   canonicalOrigin,
   languageAlternates,
   pageTitle,
@@ -27,7 +28,11 @@ export async function generateMetadata({ params }) {
   // The layout's title template turns this into the brief's `{name} | {store}`.
   // Social titles get no template applied to them, so they build it themselves.
   const title = product.metaTitle || product.name;
-  const description = product.metaDesc || product.shortDesc || undefined;
+  const description = describe(
+    product.metaDesc,
+    product.shortDesc,
+    `${product.name}${product.brand ? ` by ${product.brand}` : ''}, available now at ${ctx.company.name}.`,
+  );
 
   return {
     title,

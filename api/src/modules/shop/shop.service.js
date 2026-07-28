@@ -392,8 +392,24 @@ function pickTranslatable(translatedRow, settings) {
   return picked;
 }
 
+/**
+ * The store's published pages, cached.
+ *
+ * Both `getHome` and `getPage` need this list before they can look at
+ * sections, so under load it was one database round trip per storefront page
+ * view sitting in front of an otherwise fully cached path. Named under the
+ * `sections:` prefix so the existing invalidation covers it — publishing a
+ * page drops this along with the rendered sections it belongs to.
+ */
+async function publishedPages({ companyId }) {
+  return cached(companyId, 'sections:index', TTL.sections, async () => {
+    const { rows } = await contentService.listPages({ companyId, isActive: 1 });
+    return rows;
+  });
+}
+
 export async function getHome({ companyId, lang, defaultLang }) {
-  const { rows } = await contentService.listPages({ companyId, isActive: 1 });
+  const rows = await publishedPages({ companyId });
   const home = rows.find((row) => row.type === 'home');
   if (!home) {
     // A store with no home page still has to render something rather than 500.
@@ -486,7 +502,7 @@ export async function getSitemap({ companyId }) {
 }
 
 export async function getPage({ companyId, slug, lang, defaultLang }) {
-  const { rows } = await contentService.listPages({ companyId, isActive: 1 });
+  const rows = await publishedPages({ companyId });
   const page = rows.find((row) => row.slug === slug);
   if (!page) {
     const { AppError } = await import('../../middleware/error.js');

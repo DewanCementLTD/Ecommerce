@@ -25,10 +25,15 @@
     "seed:demo-catalog": "node scripts/seed-demo-catalog.js",
     "backfill:order-seq": "node scripts/backfill-order-seq.js",
     "carts:cleanup": "node scripts/cleanup-expired-carts.js",
-    "ui:check": "node scripts/ui-check.js"
+    "ui:check": "node scripts/ui-check.js",
+    "backfill:avif": "node scripts/backfill-avif.js",
+    "loadtest": "node scripts/loadtest.js",
+    "seed:loadtest": "node scripts/seed-loadtest.js",
+    "explain": "node scripts/explain-hot-queries.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "autocannon": "^8.0.0",
     "concurrently": "^9.1.0",
     "eslint": "^9.15.0",
     "eslint-config-prettier": "^9.1.0",
@@ -38,5 +43,13 @@
     "lighthouse": "^13.4.1",
     "prettier": "^3.3.3",
     "puppeteer-core": "^25.4.0"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }
