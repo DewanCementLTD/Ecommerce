@@ -41,3 +41,24 @@ export async function requireCustomerAuth(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * The cart is public — a guest must be able to use it with no token at all —
+ * but a logged-in customer's cart should still attach to their account. This
+ * attaches req.customer when a valid customer bearer token is present and
+ * silently does nothing otherwise, rather than rejecting the request.
+ */
+export async function optionalCustomerAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return next();
+
+  try {
+    const decoded = verifyAccessToken(header.slice('Bearer '.length));
+    if (decoded.role !== 'customer' || decoded.company_id !== req.companyId) return next();
+    if (await getRedis().get(`custauth:blacklist:${decoded.jti}`)) return next();
+    req.customer = { id: decoded.sub, companyId: decoded.company_id, jti: decoded.jti, exp: decoded.exp };
+  } catch {
+    // Not a valid customer token — treat the request as a guest.
+  }
+  next();
+}

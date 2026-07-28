@@ -24,6 +24,7 @@
     "seed:demo": "node scripts/seed-demo.js",
     "seed:demo-catalog": "node scripts/seed-demo-catalog.js",
     "backfill:order-seq": "node scripts/backfill-order-seq.js",
+    "carts:cleanup": "node scripts/cleanup-expired-carts.js",
     "ui:check": "node scripts/ui-check.js"
   },
   "devDependencies": {

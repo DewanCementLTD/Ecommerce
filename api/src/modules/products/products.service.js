@@ -474,6 +474,40 @@ export async function listVariants({ companyId, productId }) {
   return { rows: rows.map(toVariantDto) };
 }
 
+/**
+ * The cart/checkout module's one window into catalog data — never queries
+ * variants/products SQL of its own, per the "SQL only in the owning module's
+ * repo" rule. Returns a map keyed by variant id so a missing id (deleted
+ * variant) is simply absent rather than throwing, which is what lets the
+ * cart flag "this item is no longer available" instead of erroring the
+ * whole cart read.
+ */
+export async function getVariantsForCart({ companyId, ids }) {
+  if (ids.length === 0) return new Map();
+  const rows = await withCompany(companyId, (conn) => repo.findVariantsForCart(conn, { companyId, ids }));
+  const map = new Map();
+  for (const row of rows) {
+    map.set(row.VARIANT_ID, {
+      variantId: row.VARIANT_ID,
+      sku: row.SKU,
+      variantName: row.VARIANT_NAME,
+      opts: parseJson(row.OPTS, {}),
+      price: row.PRICE,
+      salePrice: row.SALE_PRICE,
+      stock: row.STOCK,
+      // A variant is orderable only if the variant itself, its product, and
+      // the product's soft-delete state all agree — any one of them being
+      // "off" makes it unavailable, not partially so.
+      isAvailable: row.VARIANT_IS_ACTIVE === 1 && row.PRODUCT_IS_ACTIVE === 1 && row.DELETED_AT === null,
+      productId: row.PRODUCT_ID,
+      productName: row.PRODUCT_NAME,
+      productSlug: row.PRODUCT_SLUG,
+      image: row.IMAGE_MEDIA_ID ? { mediaId: row.IMAGE_MEDIA_ID, alt: row.IMAGE_ALT } : null,
+    });
+  }
+  return map;
+}
+
 export async function addVariant({ companyId, productId, ...input }) {
   await withCompany(companyId, async (conn) => {
     await assertProductExists(conn, { companyId, id: productId });

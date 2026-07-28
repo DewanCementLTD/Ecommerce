@@ -27,6 +27,8 @@ import { langsRouter, transRouter } from './modules/i18n/i18n.routes.js';
 import { settingsRouter } from './modules/settings/settings.routes.js';
 import { adminsRouter, rolesRouter } from './modules/staff/staff.routes.js';
 import { accountRouter, customersRouter } from './modules/customers/customers.routes.js';
+import { cartRouter } from './modules/carts/carts.routes.js';
+import { optionalCustomerAuth } from './middleware/customerAuth.js';
 
 export function createApp() {
   const app = express();
@@ -44,6 +46,7 @@ export function createApp() {
   app.use('/storefront', tenantResolver, storefrontRouter);
   app.use('/shop', tenantResolver, shopRouter);
   app.use('/shop/account', tenantResolver, accountRouter);
+  app.use('/shop/cart', tenantResolver, optionalCustomerAuth, cartRouter);
   app.use('/customers', requireAuth, requireCompany, customersRouter);
   app.use('/auth', authRouter);
   app.use('/media', requireAuth, requireCompany, mediaRouter);

@@ -304,6 +304,33 @@ export async function countVariants(conn, { companyId, productId }) {
   return result.rows[0].CNT;
 }
 
+/**
+ * The one query cart/checkout need: current price/stock/active state plus
+ * enough product context (name, slug, primary image) to render a line item,
+ * for a batch of variant ids in one round trip.
+ */
+export async function findVariantsForCart(conn, { companyId, ids }) {
+  if (ids.length === 0) return [];
+  const { clause, binds } = idListClause(ids);
+  const result = await conn.execute(
+    `SELECT v.id AS variant_id, v.sku, v.name AS variant_name, v.opts, v.price, v.sale_price,
+            v.stock, v.is_active AS variant_is_active,
+            p.id AS product_id, p.name AS product_name, p.slug AS product_slug,
+            p.is_active AS product_is_active, p.deleted_at,
+            img.media_id AS image_media_id, img.alt AS image_alt
+       FROM variants v
+       JOIN products p ON p.company_id = v.company_id AND p.id = v.product_id
+       LEFT JOIN (
+         SELECT company_id, product_id, media_id, alt,
+                ROW_NUMBER() OVER (PARTITION BY company_id, product_id ORDER BY position, id) AS rn
+           FROM prod_imgs
+       ) img ON img.company_id = p.company_id AND img.product_id = p.id AND img.rn = 1
+      WHERE v.company_id = :companyId AND v.id IN (${clause})`,
+    { companyId, ...binds },
+  );
+  return result.rows;
+}
+
 /* ------------------------------------------------------------------ options */
 
 export async function listOptions(conn, { companyId, productId }) {
