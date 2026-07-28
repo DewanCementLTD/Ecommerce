@@ -277,3 +277,24 @@ export async function listMyOrders({ companyId, customerId, page, pageSize }) {
   );
   return { rows: camelRows(rows), total, page, pageSize };
 }
+
+/* -------------------------------------------------------------- dashboard */
+
+export async function getStatsForPeriod({ companyId, from }) {
+  const row = await withCompany(companyId, (conn) => repo.orderStatsForPeriod(conn, { companyId, from }));
+  return { orderCount: row.ORDER_COUNT, revenue: row.REVENUE };
+}
+
+export async function getAwaitingConfirmationCount({ companyId }) {
+  return withCompany(companyId, (conn) => repo.countAwaitingConfirmation(conn, { companyId }));
+}
+
+export async function getTopProducts({ companyId, from, limit }) {
+  const rows = await withCompany(companyId, (conn) => repo.topProductsByQty(conn, { companyId, from, limit }));
+  return rows.map((row) => ({ name: row.NAME_SNAP, qty: row.TOTAL_QTY }));
+}
+
+export async function getRevenueByDay({ companyId, from }) {
+  const rows = await withCompany(companyId, (conn) => repo.revenueByDay(conn, { companyId, from }));
+  return rows.map((row) => ({ day: row.DAY, revenue: row.REVENUE }));
+}

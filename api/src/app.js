@@ -29,6 +29,7 @@ import { adminsRouter, rolesRouter } from './modules/staff/staff.routes.js';
 import { accountRouter, customersRouter } from './modules/customers/customers.routes.js';
 import { cartRouter } from './modules/carts/carts.routes.js';
 import { checkoutRouter, myOrdersRouter, ordersRouter } from './modules/orders/orders.routes.js';
+import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { optionalCustomerAuth } from './middleware/customerAuth.js';
 
 export function createApp() {
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/shop/cart', tenantResolver, optionalCustomerAuth, cartRouter);
   app.use('/shop/checkout', tenantResolver, optionalCustomerAuth, checkoutRouter);
   app.use('/orders', requireAuth, requireCompany, ordersRouter);
+  app.use('/dashboard', requireAuth, requireCompany, dashboardRouter);
   app.use('/customers', requireAuth, requireCompany, customersRouter);
   app.use('/auth', authRouter);
   app.use('/media', requireAuth, requireCompany, mediaRouter);

@@ -145,11 +145,12 @@ export async function updateOrderContact(conn, { companyId, id, note, name, phon
 
 /* -------------------------------------------------------------- dashboard */
 
+/** Bind is `:fromDate`, not `:from` — FROM is reserved even as a bind variable name (ORA-01745). */
 export async function orderStatsForPeriod(conn, { companyId, from }) {
   const result = await conn.execute(
     `SELECT COUNT(*) AS order_count, NVL(SUM(total), 0) AS revenue
-       FROM orders WHERE company_id = :companyId AND placed_at >= :from AND status != 'cancelled'`,
-    { companyId, from },
+       FROM orders WHERE company_id = :companyId AND placed_at >= :fromDate AND status != 'cancelled'`,
+    { companyId, fromDate: from },
   );
   return result.rows[0];
 }
@@ -167,11 +168,11 @@ export async function topProductsByQty(conn, { companyId, from, limit }) {
     `SELECT oi.name_snap, SUM(oi.qty) AS total_qty
        FROM order_items oi
        JOIN orders o ON o.company_id = oi.company_id AND o.id = oi.order_id
-      WHERE oi.company_id = :companyId AND o.placed_at >= :from AND o.status != 'cancelled'
+      WHERE oi.company_id = :companyId AND o.placed_at >= :fromDate AND o.status != 'cancelled'
       GROUP BY oi.name_snap
       ORDER BY total_qty DESC
       FETCH FIRST :limit ROWS ONLY`,
-    { companyId, from, limit },
+    { companyId, fromDate: from, limit },
   );
   return result.rows;
 }
@@ -180,10 +181,10 @@ export async function revenueByDay(conn, { companyId, from }) {
   const result = await conn.execute(
     `SELECT TRUNC(placed_at) AS day, NVL(SUM(total), 0) AS revenue
        FROM orders
-      WHERE company_id = :companyId AND placed_at >= :from AND status != 'cancelled'
+      WHERE company_id = :companyId AND placed_at >= :fromDate AND status != 'cancelled'
       GROUP BY TRUNC(placed_at)
       ORDER BY day`,
-    { companyId, from },
+    { companyId, fromDate: from },
   );
   return result.rows;
 }

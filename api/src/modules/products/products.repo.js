@@ -312,6 +312,36 @@ export async function deleteVariantById(conn, { companyId, id }) {
   return result.rowsAffected > 0;
 }
 
+/** Dashboard: variants at or below a threshold, still active/orderable. */
+export async function listLowStockVariants(conn, { companyId, threshold, limit }) {
+  const result = await conn.execute(
+    `SELECT v.id AS variant_id, v.sku, v.stock, p.id AS product_id, p.name AS product_name
+       FROM variants v
+       JOIN products p ON p.company_id = v.company_id AND p.id = v.product_id
+      WHERE v.company_id = :companyId AND v.is_active = 1 AND p.is_active = 1 AND p.deleted_at IS NULL
+        AND v.stock <= :threshold
+      ORDER BY v.stock ASC
+      FETCH FIRST :limit ROWS ONLY`,
+    { companyId, threshold, limit },
+  );
+  return result.rows;
+}
+
+export async function countOutOfStockProducts(conn, { companyId }) {
+  const result = await conn.execute(
+    `SELECT COUNT(*) AS cnt FROM (
+       SELECT p.id
+         FROM products p
+         JOIN variants v ON v.company_id = p.company_id AND v.product_id = p.id
+        WHERE p.company_id = :companyId AND p.is_active = 1 AND p.deleted_at IS NULL
+        GROUP BY p.id
+       HAVING SUM(CASE WHEN v.is_active = 1 THEN v.stock ELSE 0 END) = 0
+     )`,
+    { companyId },
+  );
+  return result.rows[0].CNT;
+}
+
 export async function countVariants(conn, { companyId, productId }) {
   const result = await conn.execute(
     'SELECT COUNT(*) AS cnt FROM variants WHERE company_id = :companyId AND product_id = :productId',

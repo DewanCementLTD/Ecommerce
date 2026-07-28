@@ -474,6 +474,26 @@ export async function listVariants({ companyId, productId }) {
   return { rows: rows.map(toVariantDto) };
 }
 
+/** Dashboard's window into catalog data (Task 5) — same reuse-via-service rule as the cart. */
+export async function getStockAlerts({ companyId, threshold, limit = 20 }) {
+  return withCompany(companyId, async (conn) => {
+    const [lowStock, outOfStockCount] = await Promise.all([
+      repo.listLowStockVariants(conn, { companyId, threshold, limit }),
+      repo.countOutOfStockProducts(conn, { companyId }),
+    ]);
+    return {
+      lowStock: lowStock.map((row) => ({
+        variantId: row.VARIANT_ID,
+        sku: row.SKU,
+        stock: row.STOCK,
+        productId: row.PRODUCT_ID,
+        productName: row.PRODUCT_NAME,
+      })),
+      outOfStockCount,
+    };
+  });
+}
+
 /**
  * Checkout's one write into catalog data (Task 4) — takes the checkout
  * transaction's own connection rather than opening its own withCompany, the
