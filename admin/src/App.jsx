@@ -12,6 +12,8 @@ import { CategoriesPage } from './pages/categories/CategoriesPage.jsx';
 import { CollectionsListPage } from './pages/collections/CollectionsListPage.jsx';
 import { CollectionEditorPage } from './pages/collections/CollectionEditorPage.jsx';
 import { MediaLibraryPage } from './pages/media/MediaLibraryPage.jsx';
+import { PagesListPage } from './pages/pages/PagesListPage.jsx';
+import { PageSectionsPage } from './pages/pages/PageSectionsPage.jsx';
 
 export default function App() {
   return (
@@ -36,7 +38,8 @@ export default function App() {
             <Route path="/collections/new" element={<CollectionEditorPage />} />
             <Route path="/collections/:id" element={<CollectionEditorPage />} />
             <Route path="/media" element={<MediaLibraryPage />} />
-            <Route path="/pages" element={<ComingSoonPage title="Pages" />} />
+            <Route path="/pages" element={<PagesListPage />} />
+            <Route path="/pages/:id" element={<PageSectionsPage />} />
             <Route path="/banners" element={<ComingSoonPage title="Banners" />} />
             <Route path="/menus" element={<ComingSoonPage title="Menus" />} />
             <Route path="/translations" element={<ComingSoonPage title="Translations" />} />
