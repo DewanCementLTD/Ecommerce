@@ -74,12 +74,14 @@ const DEMOS = [
     domainHost: 'demo-a.localhost',
     themeCode: 'cleaver',
     adminEmail: 'admin@demo-a.localhost',
+    currency: 'BDT',
   },
   {
     name: 'Demo Store B',
     domainHost: 'demo-b.localhost',
     themeCode: 'harbour',
     adminEmail: 'admin@demo-b.localhost',
+    currency: 'AED',
   },
 ];
 
@@ -124,11 +126,25 @@ async function run() {
 
   for (const demo of DEMOS) {
     const existing = await withPlatform(async (conn) => {
-      const r = await conn.execute('SELECT id FROM domains WHERE host = :host', { host: demo.domainHost });
+      const r = await conn.execute('SELECT company_id FROM domains WHERE host = :host', {
+        host: demo.domainHost,
+      });
       return r.rows[0] ?? null;
     });
 
     if (existing) {
+      // Still idempotently repair the currency: stores provisioned before
+      // Phase 3 have none, and a product page with a price but no currency
+      // emits no `offers` at all in its structured data (lib/seo.js explains
+      // why guessing one would be worse).
+      await withPlatform(async (conn) => {
+        await conn.execute(
+          `UPDATE companies SET currency = :currency, updated_at = SYSTIMESTAMP
+            WHERE id = :companyId AND currency IS NULL`,
+          { currency: demo.currency, companyId: existing.COMPANY_ID },
+        );
+        await conn.commit();
+      });
       console.log(`${demo.domainHost} already provisioned (company ${existing.COMPANY_ID}), skipping.`);
       continue;
     }
@@ -140,6 +156,7 @@ async function run() {
         adminEmail: demo.adminEmail,
         adminName: 'Demo Admin',
         themeId: themeIds[demo.themeCode],
+        currency: demo.currency,
         defaultLangCode: 'en',
         defaultLangName: 'English',
       },

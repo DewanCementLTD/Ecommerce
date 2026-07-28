@@ -3,15 +3,52 @@ import { apiGet } from '../../../lib/api.js';
 import { pageContext } from '../../../lib/page-context.js';
 import { ProductGrid, EmptyState, Pagination, Button } from '../../../components/ui.jsx';
 import { Filters } from '../../../components/Filters.jsx';
+import { JsonLd } from '../../../components/JsonLd.jsx';
+import {
+  absolute,
+  breadcrumbLd,
+  canonicalOrigin,
+  languageAlternates,
+  pageTitle,
+  socialMeta,
+} from '../../../lib/seo.js';
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const ctx = await pageContext();
   const res = await apiGet(`/shop/cats/${slug}`, { searchParams: { lang: ctx.lang } });
-  if (!res.data) return {};
+  if (!res.data || !ctx.company) return {};
+
+  const { cat } = res.data;
+  const origin = await canonicalOrigin(ctx.company);
+  const path = `/cats/${cat.slug}`;
+  // Deliberately without `?page`/`?sort`/filter params: page 2 of a category is
+  // the same category, and a canonical carrying the current query string would
+  // hand a crawler one "distinct" URL per filter combination.
+  const url = `${origin}${path}`;
+
+  const title = cat.metaTitle || cat.name;
+  const description = cat.metaDesc || cat.descr || undefined;
+
   return {
-    title: res.data.cat.metaTitle || res.data.cat.name,
-    description: res.data.cat.metaDesc || undefined,
+    title,
+    description,
+    alternates: {
+      canonical: url,
+      languages: languageAlternates({
+        origin,
+        path,
+        langs: ctx.langs,
+        defaultLang: ctx.defaultLang,
+      }),
+    },
+    ...socialMeta({
+      title: pageTitle(title, ctx.company.name),
+      description,
+      url,
+      siteName: ctx.company.name,
+      images: cat.image?.url ? [{ url: absolute(origin, cat.image.url), alt: cat.name }] : undefined,
+    }),
   };
 }
 
@@ -30,9 +67,20 @@ export default async function CategoryPage({ params, searchParams }) {
 
   const { cat, products } = res.data;
   const filtered = applyFilters(products.rows, query);
+  const origin = await canonicalOrigin(ctx.company);
 
   return (
     <div className="sf-container py-8 md:py-12">
+      <JsonLd
+        data={breadcrumbLd({
+          origin,
+          trail: [
+            { name: ctx.company.name, path: `${ctx.hrefBase}/` },
+            { name: cat.name, path: `${ctx.hrefBase}/cats/${cat.slug}` },
+          ],
+        })}
+      />
+
       <nav aria-label="Breadcrumb" className="mb-6 text-sm text-muted">
         <ol className="flex items-center gap-2">
           <li>

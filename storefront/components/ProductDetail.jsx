@@ -14,7 +14,7 @@ import { useToast } from '../lib/ToastContext.jsx';
  * just a product with a single default variant, which keeps one code path
  * instead of two.
  */
-export function ProductDetail({ product, currency, storeName }) {
+export function ProductDetail({ product, currency }) {
   const images = product.images?.length ? product.images : [];
   const [activeImage, setActiveImage] = useState(0);
   const [selection, setSelection] = useState(() => ({ ...(product.defaultVariant?.opts ?? {}) }));
@@ -47,33 +47,16 @@ export function ProductDetail({ product, currency, storeName }) {
     }
   }
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    description: product.shortDesc || undefined,
-    brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
-    image: images.map((image) => image.url),
-    offers: selectedVariant
-      ? {
-          '@type': 'Offer',
-          price: selectedVariant.salePrice ?? selectedVariant.price,
-          priceCurrency: currency || undefined,
-          availability: selectedVariant.inStock
-            ? 'https://schema.org/InStock'
-            : 'https://schema.org/OutOfStock',
-          seller: { '@type': 'Organization', name: storeName },
-        }
-      : undefined,
-  };
+  /*
+   * The Product/Offer structured data used to be built here. It moved to the
+   * page (lib/seo.js `productLd`) in Phase 3: this component is a client
+   * component, so its version emitted relative image URLs — invalid in
+   * structured data — and a second, conflicting Product block for the same
+   * page once the server started emitting one. One page, one Product.
+   */
 
   return (
     <div className="sf-container py-8 pb-24 md:py-12 lg:pb-12">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
         <div>
           <div className="overflow-hidden rounded-lg bg-surface">

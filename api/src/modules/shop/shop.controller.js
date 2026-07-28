@@ -101,6 +101,14 @@ export async function getHome(req, res, next) {
   }
 }
 
+export async function getSitemap(req, res, next) {
+  try {
+    res.json(await shopService.getSitemap({ companyId: req.companyId }));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getPage(req, res, next) {
   try {
     const { slug } = slugParamSchema.parse(req.params);

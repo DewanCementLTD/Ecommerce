@@ -9,6 +9,15 @@ import { StoreUnavailable, StoreNotFound } from '../components/Status.jsx';
 import { CartProvider } from '../lib/CartContext.jsx';
 import { AccountProvider } from '../lib/AccountContext.jsx';
 import { ToastProvider } from '../lib/ToastContext.jsx';
+import { JsonLd } from '../components/JsonLd.jsx';
+import {
+  absolute,
+  canonicalOrigin,
+  languageAlternates,
+  organizationLd,
+  socialMeta,
+  webSiteLd,
+} from '../lib/seo.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,41 +25,59 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
   const lang = await currentLang();
   const store = await loadStore({ lang });
-  if (!store.company) return { title: 'Store' };
+  if (!store.company) {
+    // An unknown domain is a 404 page, not a page a crawler should keep.
+    return { title: 'Store', robots: { index: false, follow: false } };
+  }
 
   const path = (await currentPath()) || '/';
+  const { company } = store;
 
   /**
-   * hreflang alternates have to be fully qualified — a relative href is not a
-   * valid alternate and search engines ignore it. metadataBase is built from
-   * the request's own host, so each store's tags name that store's domain
-   * rather than anything hardcoded.
+   * Absolute URLs everywhere, on the store's *primary* domain. A relative
+   * hreflang is not a valid alternate and gets ignored; a canonical pointing at
+   * whichever secondary domain the visitor happened to use would split the
+   * store's ranking signals across its own domains.
    */
-  const headersList = await headers();
-  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost';
-  const proto = headersList.get('x-forwarded-proto') || 'http';
-  const metadataBase = new URL(`${proto}://${host}`);
+  const origin = await canonicalOrigin(company);
+  const metadataBase = new URL(origin);
+  const canonical = `${origin}${path === '/' ? '' : path}` || origin;
+
+  const title = company.seoTitle || company.name;
+  const description = company.seoDescription || `Shop online at ${company.name}.`;
+  const ogImage = company.ogImageUrl ?? company.logoUrl;
 
   /**
-   * hreflang alternates, so a crawler treats `/products/x` and `/ar/products/x`
-   * as one product in two languages rather than duplicate content. The default
-   * language is canonical at the bare path and also answers x-default.
+   * A suspended store and a secondary domain both stay out of the index: the
+   * first has nothing worth indexing, the second is a duplicate of the primary
+   * (middleware.js 301s it, but the tag has to be right for the request that
+   * has already been served).
    */
-  const languages = {};
-  for (const available of store.langs) {
-    const prefix = langBase(available.code, store.defaultLang);
-    languages[available.code] = `${prefix}${path === '/' ? '' : path}` || '/';
-  }
-  if (store.langs.length > 1) {
-    languages['x-default'] = path;
-  }
+  const indexable = company.status === 'active' && company.isPrimaryHost !== false;
 
   return {
     metadataBase,
-    title: { default: store.company.name, template: `%s · ${store.company.name}` },
-    description: store.company.seoDescription ?? `Shop online at ${store.company.name}.`,
-    robots: { index: true, follow: true },
-    alternates: { canonical: path, languages },
+    title: { default: title, template: `%s | ${company.name}` },
+    description,
+    robots: indexable
+      ? { index: true, follow: true }
+      : { index: false, follow: false, googleBot: { index: false, follow: false } },
+    alternates: {
+      canonical,
+      languages: languageAlternates({
+        origin,
+        path,
+        langs: store.langs,
+        defaultLang: store.defaultLang,
+      }),
+    },
+    ...socialMeta({
+      title,
+      description,
+      url: canonical,
+      siteName: company.name,
+      images: ogImage ? [{ url: absolute(origin, ogImage) }] : undefined,
+    }),
   };
 }
 
@@ -84,6 +111,19 @@ export default async function RootLayout({ children }) {
   const base = langBase(lang, defaultLang);
   const pathAfterLang = (await currentPath()).replace(/^\/$/, '');
 
+  // Site-wide structured data. Emitted once in the layout so every page carries
+  // it; page-level types (Product, BreadcrumbList) reference it by @id.
+  const origin = await canonicalOrigin(company);
+  const siteLd = [
+    organizationLd({
+      company,
+      origin,
+      logoUrl: company.logoUrl ? absolute(origin, company.logoUrl) : null,
+      social: company.social,
+    }),
+    webSiteLd({ company, origin }),
+  ];
+
   return (
     <html lang={lang} dir={dir} style={tokensToCssVars(tokens)}>
       <body className="min-h-screen bg-bg text-ink antialiased">
@@ -93,6 +133,10 @@ export default async function RootLayout({ children }) {
         >
           Skip to content
         </a>
+
+        {siteLd.map((data) => (
+          <JsonLd key={data['@type']} data={data} />
+        ))}
 
         <ToastProvider>
           <AccountProvider>

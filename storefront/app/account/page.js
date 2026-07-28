@@ -1,7 +1,11 @@
 import { pageContext } from '../../lib/page-context.js';
 import { AccountPanel } from '../../components/AccountPanel.jsx';
 
-export const metadata = { title: 'Account' };
+// Never indexable: everything behind it belongs to one customer.
+export const metadata = {
+  title: 'Account',
+  robots: { index: false, follow: false },
+};
 
 export default async function AccountPage() {
   const ctx = await pageContext();

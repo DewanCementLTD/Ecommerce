@@ -1,7 +1,10 @@
 import { pageContext } from '../../../lib/page-context.js';
 import { OrderHistory } from '../../../components/OrderHistory.jsx';
 
-export const metadata = { title: 'My orders' };
+export const metadata = {
+  title: 'My orders',
+  robots: { index: false, follow: false },
+};
 
 export default async function AccountOrdersPage() {
   const ctx = await pageContext();

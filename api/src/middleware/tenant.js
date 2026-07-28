@@ -44,9 +44,22 @@ export async function tenantResolver(req, res, next) {
     }
 
     req.companyId = company.ID;
+    // Not `req.host` — Express defines that as a getter on IncomingMessage and
+    // assigning to it throws.
+    req.resolvedHost = host;
     req.company = {
       id: company.ID,
       name: company.NAME,
+      /**
+       * The domain this store's canonical URLs must point at. A company can
+       * have several hosts (an old domain, a staging one, the `*.localhost`
+       * used in development); exactly one is flagged primary, and every other
+       * one is a duplicate as far as a crawler is concerned. Null when nothing
+       * is flagged — the storefront then treats whatever host was asked for as
+       * canonical, which is the only safe fallback.
+       */
+      primaryHost: company.PRIMARY_HOST ?? null,
+      isPrimaryHost: !company.PRIMARY_HOST || company.PRIMARY_HOST === host,
       status: company.STATUS,
       themeId: company.THEME_ID,
       currency: company.CURRENCY,

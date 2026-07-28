@@ -1,52 +1,46 @@
-import { headers } from 'next/headers';
 import { apiGet } from '../lib/api.js';
 import { loadStore, langBase } from '../lib/store.js';
+import { canonicalOrigin } from '../lib/seo.js';
 
 /**
- * A per-store, per-language sitemap. Each URL lists its alternates so a crawler
- * can see that `/products/x` and `/ar/products/x` are the same product in two
- * languages rather than duplicate content.
+ * A per-store sitemap, on the store's primary domain, with every URL listing
+ * its language alternates.
+ *
+ * The path list comes from `/shop/sitemap` in one call — the storefront cannot
+ * assemble a complete one by walking the paged catalog endpoints over HTTP, and
+ * the previous version silently listed only the first 48 products.
+ *
+ * Languages are alternates, not separate entries: `/products/x` and
+ * `/ar/products/x` are the same product described twice, which is exactly what
+ * `alternates.languages` says. A suspended store, an unknown domain or a
+ * secondary domain gets an empty sitemap, matching what robots.txt says about
+ * all three.
  */
 export default async function sitemap() {
-  const headersList = await headers();
-  const host = headersList.get('x-forwarded-host') || headersList.get('host') || '';
-  const proto = headersList.get('x-forwarded-proto') || 'http';
-  const origin = `${proto}://${host}`;
-
   const store = await loadStore();
-  if (!store.company) return [];
+  if (!store.company || store.suspended || store.notFound) return [];
+  if (store.company.isPrimaryHost === false) return [];
+
+  const origin = await canonicalOrigin(store.company);
+  const res = await apiGet('/shop/sitemap', { revalidate: 3600 });
+  const urls = res.data?.urls ?? [];
 
   const langs = store.langs.length ? store.langs.map((lang) => lang.code) : [store.defaultLang];
 
-  const [products, cats, pages] = await Promise.all([
-    apiGet('/shop/products', { revalidate: 3600, searchParams: { pageSize: 48 } }),
-    apiGet('/shop/cats', { revalidate: 3600 }),
-    apiGet('/shop/home', { revalidate: 3600 }),
-  ]);
+  const absolute = (lang, path) =>
+    `${origin}${langBase(lang, store.defaultLang)}${path === '/' ? '' : path}` || origin;
 
-  const paths = ['/'];
-
-  const flattenCats = (nodes = []) =>
-    nodes.flatMap((node) => [`/cats/${node.slug}`, ...flattenCats(node.children)]);
-  paths.push(...flattenCats(cats.data?.tree));
-
-  for (const product of products.data?.rows ?? []) {
-    paths.push(`/products/${product.slug}`);
-  }
-  if (pages.data?.page?.slug) paths.push('/');
-
-  return paths.map((path) => ({
-    url: `${origin}${path === '/' ? '' : path}` || origin,
-    lastModified: new Date(),
-    changeFrequency: path === '/' ? 'daily' : 'weekly',
-    priority: path === '/' ? 1 : 0.7,
-    alternates: {
-      languages: Object.fromEntries(
-        langs.map((code) => [
-          code,
-          `${origin}${langBase(code, store.defaultLang)}${path === '/' ? '' : path}` || origin,
-        ]),
-      ),
-    },
+  return urls.map((entry) => ({
+    url: absolute(store.defaultLang, entry.path),
+    lastModified: entry.lastModified ? new Date(entry.lastModified) : undefined,
+    changeFrequency: entry.changeFrequency,
+    priority: entry.priority,
+    ...(langs.length > 1
+      ? {
+          alternates: {
+            languages: Object.fromEntries(langs.map((code) => [code, absolute(code, entry.path)])),
+          },
+        }
+      : {}),
   }));
 }

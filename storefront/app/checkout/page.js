@@ -1,7 +1,11 @@
 import { pageContext } from '../../lib/page-context.js';
 import { CheckoutForm } from '../../components/CheckoutForm.jsx';
 
-export const metadata = { title: 'Checkout' };
+// Never indexable: a checkout is a private, per-session page.
+export const metadata = {
+  title: 'Checkout',
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage() {
   const ctx = await pageContext();

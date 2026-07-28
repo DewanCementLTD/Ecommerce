@@ -195,6 +195,36 @@ describe('shop: the host header is the only tenant boundary (release gate)', () 
     expect(names).not.toContain('House A');
   });
 
+  it("B's sitemap lists none of A's paths, and vice versa", async () => {
+    const a = await fromA('/shop/sitemap');
+    const b = await fromB('/shop/sitemap');
+
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+
+    const pathsA = a.body.urls.map((url) => url.path);
+    const pathsB = b.body.urls.map((url) => url.path);
+
+    // Both stores own a product and a category at the *same* slug, so a leak
+    // here would not show up as an unfamiliar path — only the counts and the
+    // collection (which only A has) can tell the two apart.
+    expect(pathsA).toContain(`/products/${SHARED_SLUG}`);
+    expect(pathsB).toContain(`/products/${SHARED_SLUG}`);
+    expect(pathsA).toContain(`/colls/${collA.slug}`);
+    expect(pathsB).not.toContain(`/colls/${collA.slug}`);
+
+    expect(pathsA.filter((path) => path.startsWith('/products/'))).toHaveLength(1);
+    expect(pathsB.filter((path) => path.startsWith('/products/'))).toHaveLength(1);
+  });
+
+  it("B's canonical domain is B's own, never A's", async () => {
+    const a = await request(app).get('/storefront/company').set('X-Forwarded-Host', hostA);
+    const b = await request(app).get('/storefront/company').set('X-Forwarded-Host', hostB);
+
+    expect(a.body.company.primaryHost).toBe(hostA);
+    expect(b.body.company.primaryHost).toBe(hostB);
+  });
+
   it('an unknown host gets 404 rather than any store’s catalog', async () => {
     const res = await request(app)
       .get('/shop/products')

@@ -374,6 +374,89 @@ export async function getHome({ companyId, lang, defaultLang }) {
   return loadPageWithSections({ companyId, page: home, lang, defaultLang });
 }
 
+/* ----------------------------------------------------------------- sitemap */
+
+/**
+ * Every indexable path this store has, in one call.
+ *
+ * The storefront cannot assemble this from the paged catalog endpoints without
+ * walking them page by page over HTTP, so the walking happens here, on the
+ * database side of the boundary, and the storefront gets a flat list. Language
+ * variants are not listed as separate entries: `sitemap.js` expands each path
+ * into its `hreflang` alternates, because a translated product is the same URL
+ * in another language, not another URL.
+ *
+ * Deliberately unlocalized and uncapped-per-type but bounded overall: a store
+ * with more products than SITEMAP_MAX_URLS needs a sitemap index, which is a
+ * different feature and not one any store here is close to needing.
+ */
+const SITEMAP_MAX_URLS = 5000;
+const SITEMAP_PAGE_SIZE = 500;
+
+export async function getSitemap({ companyId }) {
+  const urls = [{ path: '/', changeFrequency: 'daily', priority: 1 }];
+
+  const [{ rows: cats }, { rows: colls }, { rows: pages }] = await Promise.all([
+    catsService.listCats({ companyId, isActive: 1 }),
+    collsService.listColls({ companyId, page: 1, pageSize: 200, isActive: 1 }),
+    contentService.listPages({ companyId, isActive: 1 }),
+  ]);
+
+  for (const cat of cats) {
+    urls.push({
+      path: `/cats/${cat.slug}`,
+      lastModified: cat.updatedAt,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    });
+  }
+
+  for (const coll of colls) {
+    urls.push({
+      path: `/colls/${coll.slug}`,
+      lastModified: coll.updatedAt,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    });
+  }
+
+  for (const page of pages) {
+    // The home page is already in as '/', and it is the only page whose slug
+    // is not part of its URL.
+    if (page.type === 'home') continue;
+    urls.push({
+      path: `/pages/${page.slug}`,
+      lastModified: page.updatedAt,
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    });
+  }
+
+  for (let page = 1; urls.length < SITEMAP_MAX_URLS; page += 1) {
+    const result = await productsService.listProducts({
+      companyId,
+      page,
+      pageSize: SITEMAP_PAGE_SIZE,
+      isActive: 1,
+      sort: 'created',
+      dir: 'desc',
+    });
+
+    for (const product of result.rows) {
+      urls.push({
+        path: `/products/${product.slug}`,
+        lastModified: product.updatedAt,
+        changeFrequency: 'weekly',
+        priority: 0.7,
+      });
+    }
+
+    if (result.rows.length < SITEMAP_PAGE_SIZE) break;
+  }
+
+  return { urls: urls.slice(0, SITEMAP_MAX_URLS) };
+}
+
 export async function getPage({ companyId, slug, lang, defaultLang }) {
   const { rows } = await contentService.listPages({ companyId, isActive: 1 });
   const page = rows.find((row) => row.slug === slug);

@@ -1,17 +1,41 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { getMedia } from '../media/media.service.js';
+import { getSettings } from '../settings/settings.service.js';
 import { MEDIA_WIDTHS, variantPath } from '../../lib/mediaStorage.js';
 import { AppError } from '../../middleware/error.js';
 
-export function getCompanyInfo(req, res) {
-  const { logoMediaId, ...rest } = req.company;
-  res.json({
-    company: {
-      ...rest,
-      logoUrl: logoMediaId ? `/storefront/media/${logoMediaId}/file` : null,
-    },
-  });
+/**
+ * Everything the storefront's chrome and its `<head>` need, in one call.
+ *
+ * The SEO defaults come from `settings` rather than from anything hardcoded:
+ * `seo_title`/`seo_description` are seeded at provisioning and edited in the
+ * client admin, and every page's metadata falls back to them.
+ */
+export async function getCompanyInfo(req, res, next) {
+  try {
+    const { logoMediaId, ...rest } = req.company;
+    const { settings } = await getSettings({ companyId: req.companyId });
+
+    res.json({
+      company: {
+        ...rest,
+        logoUrl: logoMediaId ? `/storefront/media/${logoMediaId}/file` : null,
+        seoTitle: settings.seo_title || null,
+        seoDescription: settings.seo_description || null,
+        ogImageUrl: settings.seo_og_media_id
+          ? `/storefront/media/${settings.seo_og_media_id}/file`
+          : null,
+        social: {
+          facebook: settings.social_facebook || null,
+          instagram: settings.social_instagram || null,
+          twitter: settings.social_twitter || null,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**

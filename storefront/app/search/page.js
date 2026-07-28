@@ -2,7 +2,17 @@ import { apiGet } from '../../lib/api.js';
 import { pageContext } from '../../lib/page-context.js';
 import { ProductGrid, EmptyState, Pagination, Button } from '../../components/ui.jsx';
 
-export const metadata = { title: 'Search' };
+/**
+ * Search results are noindex, follow.
+ *
+ * Every `?q=` is a distinct URL with content assembled from pages that are
+ * already indexed on their own, and letting a crawler in generates an unbounded
+ * set of thin duplicates. `follow` still lets it walk through to the products.
+ */
+export const metadata = {
+  title: 'Search',
+  robots: { index: false, follow: true, googleBot: { index: false, follow: true } },
+};
 
 export default async function SearchPage({ searchParams }) {
   const query = await searchParams;

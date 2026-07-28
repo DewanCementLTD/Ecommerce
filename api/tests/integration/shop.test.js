@@ -103,6 +103,7 @@ afterAll(async () => {
       'DELETE FROM variants WHERE company_id = :companyId',
       'DELETE FROM products WHERE company_id = :companyId',
       'DELETE FROM cats WHERE company_id = :companyId',
+      'DELETE FROM settings WHERE company_id = :companyId',
       'DELETE FROM logs WHERE company_id = :companyId',
       'DELETE FROM admins WHERE company_id = :companyId',
       'DELETE FROM domains WHERE company_id = :companyId',
@@ -240,6 +241,74 @@ describe('GET /shop/search', () => {
 
   it('rejects an empty query', async () => {
     expect((await shop('/shop/search?q=')).status).toBe(400);
+  });
+});
+
+describe('GET /shop/sitemap', () => {
+  it('lists every indexable path, home first, with no auth', async () => {
+    const res = await shop('/shop/sitemap');
+    expect(res.status).toBe(200);
+
+    const paths = res.body.urls.map((url) => url.path);
+    expect(paths[0]).toBe('/');
+    expect(paths).toContain(`/products/${visible.slug}`);
+    expect(paths).toContain(`/cats/steaks-${suffix}`);
+  });
+
+  it('leaves out everything a shopper cannot reach', async () => {
+    const paths = (await shop('/shop/sitemap')).body.urls.map((url) => url.path);
+    expect(paths).not.toContain(`/products/${hidden.slug}`);
+    expect(paths).not.toContain(`/cats/draft-cat-${suffix}`);
+    // The home page is '/' — never '/pages/home' as well, or it would be in
+    // the sitemap twice under two URLs.
+    expect(paths.filter((path) => path.startsWith('/pages/home'))).toHaveLength(0);
+  });
+
+  it('carries a lastModified the storefront can put in <lastmod>', async () => {
+    const entry = (await shop('/shop/sitemap')).body.urls.find(
+      (url) => url.path === `/products/${visible.slug}`,
+    );
+    expect(Number.isNaN(Date.parse(entry.lastModified))).toBe(false);
+    expect(entry.priority).toBeGreaterThan(0);
+  });
+});
+
+describe('GET /storefront/company', () => {
+  it('names the primary domain so the storefront can build canonical URLs', async () => {
+    const res = await request(app).get('/storefront/company').set('X-Forwarded-Host', host);
+    expect(res.status).toBe(200);
+    expect(res.body.company.primaryHost).toBe(host);
+    expect(res.body.company.isPrimaryHost).toBe(true);
+  });
+
+  it('flags a secondary domain as non-primary', async () => {
+    const altHost = `alt-${suffix}.localhost`;
+    await withPlatform(async (conn) => {
+      await conn.execute(
+        'INSERT INTO domains (company_id, host, is_primary) VALUES (:companyId, :host, 0)',
+        { companyId, host: altHost },
+      );
+      await conn.commit();
+    });
+
+    try {
+      const res = await request(app).get('/storefront/company').set('X-Forwarded-Host', altHost);
+      expect(res.status).toBe(200);
+      expect(res.body.company.primaryHost).toBe(host);
+      expect(res.body.company.isPrimaryHost).toBe(false);
+    } finally {
+      await getRedis().del(`host:${altHost}`);
+    }
+  });
+
+  it('exposes the SEO defaults from settings, not from anything hardcoded', async () => {
+    await auth(request(app).put('/settings')).send({
+      values: { seo_title: `Sitemap Co ${suffix}`, seo_description: 'Meat, delivered.' },
+    });
+
+    const res = await request(app).get('/storefront/company').set('X-Forwarded-Host', host);
+    expect(res.body.company.seoTitle).toBe(`Sitemap Co ${suffix}`);
+    expect(res.body.company.seoDescription).toBe('Meat, delivered.');
   });
 });
 
