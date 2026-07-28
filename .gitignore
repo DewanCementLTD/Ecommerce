@@ -20,3 +20,6 @@ Thumbs.db
 
 .vscode/*
 !.vscode/extensions.json
+
+# UI check output (screenshots from scripts/ui-check.js)
+.ui-check/

@@ -84,3 +84,28 @@ export async function getLangs(req, res, next) {
     next(err);
   }
 }
+
+export async function getMenus(req, res, next) {
+  try {
+    res.json(await shopService.getMenus({ companyId: req.companyId, ...localeOf(req) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getHome(req, res, next) {
+  try {
+    res.json(await shopService.getHome({ companyId: req.companyId, ...localeOf(req) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPage(req, res, next) {
+  try {
+    const { slug } = slugParamSchema.parse(req.params);
+    res.json(await shopService.getPage({ companyId: req.companyId, slug, ...localeOf(req) }));
+  } catch (err) {
+    next(err);
+  }
+}

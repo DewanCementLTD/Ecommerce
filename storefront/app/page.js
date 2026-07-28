@@ -1,87 +1,44 @@
-import { headers } from 'next/headers';
+import { apiGet } from '../lib/api.js';
+import { pageContext } from '../lib/page-context.js';
+import { Sections } from '../components/sections.jsx';
+import { EmptyState } from '../components/ui.jsx';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:4000';
+/**
+ * The home page is whatever sections the owner arranged, in their order. One
+ * API call returns the page and every section's data already resolved, so this
+ * component does no fetching per section.
+ */
+export default async function HomePage() {
+  const ctx = await pageContext();
+  if (!ctx.company) return null; // layout already rendered the status page
 
-async function getCompany() {
-  const headersList = await headers();
-  const host = headersList.get('host');
-
-  const res = await fetch(`${API_URL}/storefront/company`, {
-    headers: { 'X-Forwarded-Host': host ?? '' },
-    cache: 'no-store',
+  const home = await apiGet('/shop/home', {
+    revalidate: 60,
+    searchParams: { lang: ctx.lang },
   });
 
-  if (res.status === 503) return { suspended: true };
-  if (!res.ok) return null;
+  const sections = home.data?.sections ?? [];
 
-  const data = await res.json();
-  return { company: data.company };
-}
-
-export default async function HomePage() {
-  const result = await getCompany();
-
-  if (!result) {
+  if (sections.length === 0) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Store not found</h1>
-          <p className="mt-2 text-gray-500">This domain isn&apos;t connected to any Storeforge store.</p>
-        </div>
-      </main>
+      <div className="sf-container py-24">
+        <EmptyState
+          title={`Welcome to ${ctx.company.name}`}
+          body="This store is being set up. Its home page will appear here as soon as the first sections are arranged."
+        />
+      </div>
     );
   }
-
-  if (result.suspended) {
-    return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center">
-        <div>
-          <h1 className="text-2xl font-semibold">Temporarily unavailable</h1>
-          <p className="mt-2 text-gray-500">This store is currently suspended.</p>
-        </div>
-      </main>
-    );
-  }
-
-  const { company } = result;
-  const theme = company.theme ?? {};
-  const primaryColor = theme.primaryColor ?? '#111827';
-  const secondaryColor = theme.secondaryColor ?? '#6b7280';
-  const backgroundColor = theme.backgroundColor ?? '#ffffff';
-  const textColor = theme.textColor ?? '#111827';
-  const logoUrl = company.logoUrl ? `${API_URL}${company.logoUrl}` : null;
 
   return (
-    <main style={{ backgroundColor, color: textColor, minHeight: '100vh' }} className="flex flex-col">
-      <header
-        style={{ borderBottom: `4px solid ${primaryColor}` }}
-        className="flex items-center gap-3 px-4 py-4 sm:px-6"
-      >
-        {logoUrl ? (
-          <img src={logoUrl} alt={`${company.name} logo`} className="h-10 w-10 rounded object-cover" />
-        ) : (
-          <div
-            style={{ backgroundColor: primaryColor }}
-            className="flex h-10 w-10 items-center justify-center rounded text-lg font-bold text-white"
-            aria-hidden="true"
-          >
-            {company.name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span className="text-lg font-semibold">{company.name}</span>
-      </header>
-
-      <section className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-16 text-center">
-        <h1 className="text-3xl font-bold sm:text-4xl">Welcome to {company.name}</h1>
-        <p style={{ color: secondaryColor }} className="max-w-md text-base">
-          This storefront is served entirely from Storeforge&apos;s shared codebase — theme, name, and logo
-          all come from the database, resolved by the domain you&apos;re visiting on.
-        </p>
-      </section>
-
-      <footer className="px-4 py-6 text-center text-sm" style={{ color: secondaryColor }}>
-        &copy; {new Date().getFullYear()} {company.name}
-      </footer>
-    </main>
+    <div className="sf-reveal">
+      {/*
+        The home page's visual title is a banner image, so the document still
+        needs a real h1 for screen readers and for search engines. Named after
+        the store, from the database.
+      */}
+      <h1 className="sr-only">{ctx.company.name}</h1>
+      <Sections sections={sections} hrefBase={ctx.hrefBase} currency={ctx.currency} />
+    </div>
   );
 }

@@ -3,6 +3,9 @@ import * as productsService from '../products/products.service.js';
 import * as collsService from '../colls/colls.service.js';
 import * as i18nService from '../i18n/i18n.service.js';
 import { loadTranslations, applyTranslations } from '../i18n/i18n.service.js';
+import * as contentService from '../content/content.service.js';
+import { resolveSections } from './shop.sections.js';
+import { imageUrl, toCard, toDetail, toPublicCat, toPublicTreeNode } from './shop.dto.js';
 
 /**
  * The public face of the catalog.
@@ -16,95 +19,6 @@ import { loadTranslations, applyTranslations } from '../i18n/i18n.service.js';
  * The company is always `req.companyId` from the resolved host, never anything
  * the client sent.
  */
-
-/** Public URL for a media row, served by the existing storefront media route. */
-function imageUrl(mediaId) {
-  return mediaId ? `/storefront/media/${mediaId}/file` : null;
-}
-
-function toPublicImage(image) {
-  return image ? { mediaId: image.mediaId, alt: image.alt, url: imageUrl(image.mediaId) } : null;
-}
-
-/** A product as it appears in a grid. */
-function toCard(product) {
-  return {
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    shortDesc: product.shortDesc,
-    brand: product.brand,
-    isFeatured: product.isFeatured,
-    tags: product.tags,
-    price: product.defaultVariant?.price ?? null,
-    salePrice: product.defaultVariant?.salePrice ?? null,
-    inStock: (product.defaultVariant?.stock ?? 0) > 0,
-    image: product.primaryImage
-      ? { mediaId: product.primaryImage.mediaId, alt: product.primaryImage.alt, url: imageUrl(product.primaryImage.mediaId) }
-      : null,
-  };
-}
-
-/** A product as it appears on its own page. */
-function toDetail(product) {
-  const variants = product.variants
-    .filter((variant) => variant.isActive === 1)
-    .map((variant) => ({
-      id: variant.id,
-      sku: variant.sku,
-      name: variant.name,
-      opts: variant.opts,
-      price: variant.price,
-      salePrice: variant.salePrice,
-      inStock: variant.stock > 0,
-      stock: variant.stock,
-      isDefault: variant.isDefault,
-    }));
-
-  return {
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    descr: product.descr,
-    shortDesc: product.shortDesc,
-    brand: product.brand,
-    tags: product.tags,
-    metaTitle: product.metaTitle,
-    metaDesc: product.metaDesc,
-    options: product.options.map((option) => ({ name: option.name, vals: option.vals })),
-    variants,
-    // A single-variant product is a "simple" product — the storefront hides the
-    // picker rather than branching onto a different code path.
-    defaultVariant: variants.find((variant) => variant.isDefault === 1) ?? variants[0] ?? null,
-    images: product.images.map((image) => ({
-      mediaId: image.mediaId,
-      alt: image.alt,
-      url: imageUrl(image.mediaId),
-    })),
-  };
-}
-
-function toPublicCat(cat) {
-  return {
-    id: cat.id,
-    name: cat.name,
-    slug: cat.slug,
-    descr: cat.descr ?? null,
-    metaTitle: cat.metaTitle ?? null,
-    metaDesc: cat.metaDesc ?? null,
-    image: toPublicImage(cat.imageId ? { mediaId: cat.imageId, alt: cat.name } : null),
-  };
-}
-
-function toPublicTreeNode(node) {
-  return {
-    id: node.id,
-    name: node.name,
-    slug: node.slug,
-    image: node.imageId ? { mediaId: node.imageId, alt: node.name, url: imageUrl(node.imageId) } : null,
-    children: node.children.map(toPublicTreeNode),
-  };
-}
 
 /**
  * Translation is applied here rather than inside each catalog service, for the
@@ -273,4 +187,158 @@ export async function search({ companyId, q, page, pageSize, lang, defaultLang }
     defaultLang,
   });
   return { q, ...result };
+}
+
+/* ------------------------------------------------------------ pages & menus */
+
+/**
+ * Header and footer in one call, with each menu item's pointer resolved to the
+ * slug it should link to. Storing a pointer rather than a URL means renaming a
+ * category cannot break the navigation; resolving it here means the storefront
+ * does not have to know how.
+ */
+export async function getMenus({ companyId, lang, defaultLang }) {
+  const menus = {};
+
+  for (const code of ['header', 'footer']) {
+    let menu;
+    try {
+      menu = await contentService.getMenuWithItems({ companyId, code, isActive: 1 });
+    } catch {
+      menus[code] = null;
+      continue;
+    }
+
+    const flat = [];
+    const walk = (items) => items.forEach((item) => { flat.push(item); walk(item.children); });
+    walk(menu.items);
+
+    const translations = await loadTranslations({
+      companyId,
+      entity: 'menu_item',
+      entityIds: flat.map((item) => item.id),
+      lang,
+      defaultLang,
+    });
+
+    const targets = await resolveMenuTargets({ companyId, items: flat });
+
+    const shape = (items) =>
+      items.map((item) => ({
+        id: item.id,
+        label: translations.get(item.id)?.label ?? item.label,
+        linkType: item.linkType,
+        url: item.url,
+        targetSlug: targets.get(`${item.linkType}:${item.linkId}`) ?? null,
+        children: shape(item.children),
+      }));
+
+    menus[code] = { code, items: shape(menu.items) };
+  }
+
+  return { menus };
+}
+
+/** One lookup per referenced entity type, not one per menu item. */
+async function resolveMenuTargets({ companyId, items }) {
+  const targets = new Map();
+  const byType = { cat: [], coll: [], page: [], product: [] };
+
+  for (const item of items) {
+    if (item.linkType !== 'url' && item.linkId) byType[item.linkType]?.push(item.linkId);
+  }
+
+  if (byType.cat.length) {
+    const { rows } = await catsService.listCats({ companyId, isActive: 1 });
+    for (const row of rows) targets.set(`cat:${row.id}`, row.slug);
+  }
+  if (byType.coll.length) {
+    const { rows } = await collsService.listColls({ companyId, page: 1, pageSize: 100, isActive: 1 });
+    for (const row of rows) targets.set(`coll:${row.id}`, row.slug);
+  }
+  if (byType.page.length) {
+    const { rows } = await contentService.listPages({ companyId, isActive: 1 });
+    for (const row of rows) targets.set(`page:${row.id}`, row.slug);
+  }
+  for (const productId of byType.product) {
+    try {
+      const product = await productsService.getProduct({ companyId, id: productId });
+      targets.set(`product:${productId}`, product.slug);
+    } catch {
+      // Linked product was deleted; the item falls back to its id and 404s
+      // rather than breaking the whole navigation.
+    }
+  }
+
+  return targets;
+}
+
+async function loadPageWithSections({ companyId, page, lang, defaultLang }) {
+  const { rows } = await contentService.listSections({ companyId, pageId: page.id, isActive: 1 });
+
+  const translated = await translate({
+    companyId,
+    entity: 'section',
+    rows: rows.map((row) => ({ ...row, ...row.settings })),
+    lang,
+    defaultLang,
+  });
+
+  const withTranslatedSettings = rows.map((row, index) => ({
+    ...row,
+    settings: { ...row.settings, ...pickTranslatable(translated[index], row.settings) },
+  }));
+
+  const [pageTranslated] = await translate({
+    companyId,
+    entity: 'page',
+    rows: [page],
+    lang,
+    defaultLang,
+  });
+
+  return {
+    page: {
+      id: pageTranslated.id,
+      title: pageTranslated.title,
+      slug: pageTranslated.slug,
+      type: pageTranslated.type,
+      content: pageTranslated.content,
+      metaTitle: pageTranslated.metaTitle,
+      metaDesc: pageTranslated.metaDesc,
+      ogImage: pageTranslated.ogImageId ? imageUrl(pageTranslated.ogImageId) : null,
+    },
+    sections: await resolveSections({ companyId, sections: withTranslatedSettings }),
+  };
+}
+
+/** Only the keys the section actually has — a translation cannot add settings. */
+function pickTranslatable(translatedRow, settings) {
+  const picked = {};
+  for (const key of Object.keys(settings)) {
+    if (translatedRow?.[key] !== undefined && typeof translatedRow[key] === 'string') {
+      picked[key] = translatedRow[key];
+    }
+  }
+  return picked;
+}
+
+export async function getHome({ companyId, lang, defaultLang }) {
+  const { rows } = await contentService.listPages({ companyId, isActive: 1 });
+  const home = rows.find((row) => row.type === 'home');
+  if (!home) {
+    // A store with no home page still has to render something rather than 500.
+    return { page: null, sections: [] };
+  }
+  return loadPageWithSections({ companyId, page: home, lang, defaultLang });
+}
+
+export async function getPage({ companyId, slug, lang, defaultLang }) {
+  const { rows } = await contentService.listPages({ companyId, isActive: 1 });
+  const page = rows.find((row) => row.slug === slug);
+  if (!page) {
+    const { AppError } = await import('../../middleware/error.js');
+    throw new AppError(404, 'PAGE_NOT_FOUND', 'Page not found.');
+  }
+  return loadPageWithSections({ companyId, page, lang, defaultLang });
 }

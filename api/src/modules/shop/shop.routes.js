@@ -10,3 +10,6 @@ shopRouter.get('/cats/:slug', controller.getCat);
 shopRouter.get('/colls/:slug', controller.getColl);
 shopRouter.get('/search', controller.getSearch);
 shopRouter.get('/langs', controller.getLangs);
+shopRouter.get('/menus', controller.getMenus);
+shopRouter.get('/home', controller.getHome);
+shopRouter.get('/pages/:slug', controller.getPage);

@@ -101,11 +101,22 @@ export async function findSlugsStartingWith(conn, { companyId, base, excludeId }
  * tests/integration/products.test.js asserts that count does not grow with the
  * number of products.
  */
-export async function listProducts(conn, { companyId, page, pageSize, search, catId, collId, isActive, isFeatured, sort, dir }) {
+export async function listProducts(conn, { companyId, page, pageSize, search, catId, collId, isActive, isFeatured, ids, sort, dir }) {
   const offset = (page - 1) * pageSize;
   const searchPattern = search ? `%${search.toLowerCase()}%` : null;
   const sortColumn = SORT_COLUMNS[sort] ?? SORT_COLUMNS.created;
   const sortDir = dir === 'asc' ? 'ASC' : 'DESC';
+
+  // An explicit id list is how a 'manual' product row section names its members.
+  const idBinds = {};
+  const idFilter = ids?.length
+    ? `AND p.id IN (${ids
+        .map((id, index) => {
+          idBinds[`pid${index}`] = id;
+          return `:pid${index}`;
+        })
+        .join(', ')})`
+    : '';
 
   const from = `
       FROM products p
@@ -129,7 +140,8 @@ export async function listProducts(conn, { companyId, page, pageSize, search, ca
              OR EXISTS (
                   SELECT 1 FROM variants sv
                    WHERE sv.company_id = p.company_id AND sv.product_id = p.id
-                     AND LOWER(sv.sku) LIKE :search4))`;
+                     AND LOWER(sv.sku) LIKE :search4))
+       ${idFilter}`;
 
   const filterBinds = {
     companyId,
@@ -145,6 +157,7 @@ export async function listProducts(conn, { companyId, page, pageSize, search, ca
     search2: searchPattern,
     search3: searchPattern,
     search4: searchPattern,
+    ...idBinds,
   };
 
   const rowsResult = await conn.execute(

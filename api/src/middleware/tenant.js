@@ -50,6 +50,8 @@ export async function tenantResolver(req, res, next) {
       status: company.STATUS,
       themeId: company.THEME_ID,
       currency: company.CURRENCY,
+      email: company.EMAIL,
+      phone: company.PHONE,
       defaultLang: company.DEFAULT_LANG,
       theme: company.THEME_TOKENS ? JSON.parse(company.THEME_TOKENS) : null,
       logoMediaId: company.LOGO_MEDIA_ID,

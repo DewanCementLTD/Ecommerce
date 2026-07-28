@@ -10,27 +10,89 @@ const { initPool, closePool, withPlatform } = await import('../api/src/db/pool.j
 const { provisionCompany } = await import('../api/src/modules/platform/platform.service.js');
 const { closeRedis } = await import('../api/src/lib/redis.js');
 
+/**
+ * The two themes Phase 1 ships, to prove the theming system works.
+ *
+ * They differ only in these token objects — no component, no template, no
+ * conditional anywhere in the storefront knows which store it is rendering.
+ * That includes the fonts and the header/footer arrangement, which are token
+ * values rather than code branches.
+ *
+ * Neither is an AI-design default: no cream-and-terracotta serif, no
+ * black-with-acid-green. "Cleaver" is a butcher's palette — deep forest, warm
+ * ochre, bone; "Harbour" is cool, quiet retail — ink, stone, a single blue.
+ */
 const THEMES = [
   {
-    code: 'ocean',
-    name: 'Ocean Blue',
-    tokens: { primaryColor: '#1d4ed8', secondaryColor: '#0ea5e9', backgroundColor: '#ffffff', textColor: '#0f172a' },
+    code: 'cleaver',
+    name: 'Cleaver (warm retail)',
+    tokens: {
+      color: {
+        bg: '#fbfaf7',
+        surface: '#f1ede4',
+        text: '#1d2419',
+        muted: '#5f6b58',
+        border: '#ddd8ca',
+        primary: '#24401f',
+        primaryText: '#f7f5ef',
+        accent: '#a8641c',
+        sale: '#a3301f',
+      },
+      font: { display: 'bricolage', body: 'publicsans' },
+      radius: { sm: '4px', md: '8px', lg: '14px', pill: '999px' },
+      layout: { header: 'classic', footer: 'columns' },
+    },
   },
   {
-    code: 'sunset',
-    name: 'Sunset Orange',
-    tokens: { primaryColor: '#ea580c', secondaryColor: '#facc15', backgroundColor: '#fffbeb', textColor: '#431407' },
+    code: 'harbour',
+    name: 'Harbour (clean modern)',
+    tokens: {
+      color: {
+        bg: '#ffffff',
+        surface: '#f4f6f8',
+        text: '#101418',
+        muted: '#66707c',
+        border: '#e2e6ea',
+        primary: '#101418',
+        primaryText: '#ffffff',
+        accent: '#1f6feb',
+        sale: '#c2410c',
+      },
+      font: { display: 'manrope', body: 'manrope' },
+      radius: { sm: '8px', md: '14px', lg: '24px', pill: '999px' },
+      layout: { header: 'centered', footer: 'compact' },
+    },
   },
 ];
 
 const DEMOS = [
-  { name: 'Demo Store A', domainHost: 'demo-a.localhost', themeCode: 'ocean', adminEmail: 'admin@demo-a.localhost' },
-  { name: 'Demo Store B', domainHost: 'demo-b.localhost', themeCode: 'sunset', adminEmail: 'admin@demo-b.localhost' },
+  {
+    name: 'Demo Store A',
+    domainHost: 'demo-a.localhost',
+    themeCode: 'cleaver',
+    adminEmail: 'admin@demo-a.localhost',
+  },
+  {
+    name: 'Demo Store B',
+    domainHost: 'demo-b.localhost',
+    themeCode: 'harbour',
+    adminEmail: 'admin@demo-b.localhost',
+  },
 ];
 
 async function ensureTheme(conn, theme) {
   const existing = await conn.execute('SELECT id FROM themes WHERE code = :code', { code: theme.code });
-  if (existing.rows.length > 0) return existing.rows[0].ID;
+  if (existing.rows.length > 0) {
+    // Keep the tokens current: re-running the seed after a theme edit should
+    // update the row, not silently leave the old palette in place.
+    await conn.execute('UPDATE themes SET name = :name, tokens = :tokens WHERE code = :code', {
+      code: theme.code,
+      name: theme.name,
+      tokens: JSON.stringify(theme.tokens),
+    });
+    await conn.commit();
+    return existing.rows[0].ID;
+  }
 
   const result = await conn.execute(
     `INSERT INTO themes (code, name, tokens, is_active) VALUES (:code, :name, :tokens, 1)

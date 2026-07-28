@@ -12,6 +12,7 @@ export async function findCompanyIdByHost(conn, host) {
 export async function findCompanyById(conn, companyId) {
   const result = await conn.execute(
     `SELECT c.id, c.name, c.status, c.theme_id, c.currency, c.logo_media_id,
+            c.email, c.phone,
             l.code AS default_lang, t.tokens AS theme_tokens
      FROM companies c
      LEFT JOIN langs l ON l.company_id = c.id AND l.is_default = 1
