@@ -154,3 +154,19 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** Product audit entries (`product_created`, `product_updated`, `product_deleted`, `product_bulk_*`, `stock_adjusted`) are written through `insertLog` on the **same `withCompany` connection and transaction** as the change itself, rather than through a separate `withPlatform` call.
 **Why:** `00-SYSTEM-DESIGN.md §8` requires an audit trail for product create/update/delete. Writing it in the same transaction means a rolled-back change cannot leave behind a log entry claiming it happened, and a logged change cannot be missing from the data. `logs` has a VPD policy, and passing the same `company_id` the connection is scoped to satisfies its `update_check` — the platform connection is only needed for platform-level entries where `company_id` is NULL. The doc comment on `logs.repo.js` now describes both callers.
 **Alternatives considered:** A second connection via `withPlatform` (rejected — two transactions means the pair can disagree, and it burns a connection from a different pool per write).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 7
+**Decision:** Two new API modules, `modules/settings/` (GET/PUT key-value store) and `modules/staff/` (admin + role CRUD), were added on Phase 0's existing `settings`/`admins`/`roles` tables. No migration — those tables already carry VPD policies, `sf_platform_role` grants, and `PLATFORM_TABLES` synonym entries from `001_init.sql`.
+**Why:** `docs/02-PHASE-1-catalog.md` Task 7 lists "Settings" and "Staff & roles" as admin screens as if matching endpoints already existed, but the only settings read was `GET /platform/companies/:id/settings`, gated `requireRole('platform')` — a Super Admin, not a company's own admin, endpoint. Building the screens required building the API underneath them first.
+**Alternatives considered:** Loosening `/platform/companies/:id/settings`'s role gate to also accept a company-scoped admin for their own company (rejected — conflates two different trust boundaries in one route; platform routes should stay platform-only, and a company self-service endpoint reads more clearly as its own module, matching the module-per-resource shape every other Phase 1 feature uses).
+
+---
+
+**Date:** 2026-07-28
+**Phase / Task:** phase-1, Task 7
+**Decision:** `admins.email`'s existing platform-wide `UNIQUE` constraint (from `001_init.sql`, predates Phase 1) is left as-is; `staff.service.js`'s `createAdmin` catches its violation and returns `409 EMAIL_TAKEN` rather than attempting to scope the uniqueness per company.
+**Why:** `/auth/login` resolves an email to exactly one admin row with no company hint in the request — scoping the constraint per company would make login ambiguous (which company's admin did `owner@x.com` mean?) without also adding a company-selection step to login that nothing in Phase 0 or Phase 1 needs otherwise. Documented as an isolation test (`settings-staff.test.js`) rather than silently discovered later: it proves company B genuinely cannot claim an email already used by company A, and that this is by design, not a leak.
+**Alternatives considered:** Per-company unique constraint on `(company_id, email)` plus a "select your store" step in login (rejected — meaningfully expands Phase 1 scope for a problem no phase brief raised).
