@@ -40,6 +40,16 @@ export const env = {
     },
   },
   /**
+   * Origins allowed through CORS on top of the stores' own domains: the admin
+   * and Super Admin panels, which are served from somewhere that is not a
+   * client domain. Comma-separated.
+   */
+  adminOrigins: (process.env.ADMIN_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+
+  /**
    * Where the Next.js storefront answers, so the API can ask it to drop its
    * fetch cache for a store after a write. Both values unset (the default)
    * turns tag-based revalidation off entirely and leaves the storefront on its

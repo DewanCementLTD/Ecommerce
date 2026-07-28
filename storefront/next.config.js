@@ -47,6 +47,46 @@ const nextConfig = {
         source: '/storefront/media/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
+      {
+        /**
+         * The storefront is the only part of this system that serves HTML to
+         * the public, so it is the only part where these headers do anything —
+         * the API had them from helmet since Phase 0 and this side had none.
+         *
+         * The CSP is as tight as a Next.js app can be without a nonce
+         * pipeline: `'unsafe-inline'` is required for the framework's own
+         * bootstrap script and for the theme's inline custom properties, and
+         * `data:` for the generated favicon. Everything else is same-origin
+         * only — in particular `frame-ancestors 'none'` (no clickjacking a
+         * checkout) and `form-action 'self'` (a stored-XSS payload cannot
+         * repoint the checkout form at another host).
+         */
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data:",
+              "font-src 'self' data:",
+              "connect-src 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              'upgrade-insecure-requests',
+            ].join('; '),
+          },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+        ],
+      },
     ];
   },
 };

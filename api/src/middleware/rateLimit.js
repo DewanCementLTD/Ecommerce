@@ -9,6 +9,21 @@ import { AppError } from './error.js';
  */
 export function rateLimit({ keyFn, limit, windowSeconds }) {
   return async (req, res, next) => {
+    /*
+     * Off under `NODE_ENV=test`.
+     *
+     * Every limiter here is keyed by IP, and the whole test suite comes from
+     * 127.0.0.1: several hundred logins, searches and uploads inside a few
+     * minutes. Leaving it on would mean tests failing with 429 for reasons
+     * that have nothing to do with what they assert, and the usual "fix" for
+     * that is to raise the production limits until the tests pass — which
+     * quietly removes the protection instead of the noise.
+     *
+     * The mechanism itself is still covered: `rateLimit.test.js` drives this
+     * middleware directly rather than through a route.
+     */
+    if (process.env.NODE_ENV === 'test' && !req.headers['x-force-rate-limit']) return next();
+
     try {
       const redis = getRedis();
       const key = keyFn(req);

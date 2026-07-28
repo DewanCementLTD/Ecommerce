@@ -1,6 +1,7 @@
 import { verifyAccessToken } from '../lib/jwt.js';
 import { getRedis } from '../lib/redis.js';
 import { platformKey } from '../lib/cache.js';
+import { isSessionRevoked } from '../lib/sessions.js';
 import { AppError } from './error.js';
 
 /**
@@ -25,6 +26,12 @@ export async function requireAuth(req, res, next) {
 
     const blacklisted = await getRedis().get(platformKey('auth', 'blacklist', decoded.jti));
     if (blacklisted) {
+      throw new AppError(401, 'UNAUTHENTICATED', 'Token has been revoked.');
+    }
+
+    // Blacklisting covers one logged-out token; the epoch covers "every token
+    // this account has" — what a password reset or a deactivation needs.
+    if (await isSessionRevoked(decoded.sub, decoded.iat)) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Token has been revoked.');
     }
 

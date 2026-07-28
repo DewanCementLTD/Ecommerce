@@ -1,11 +1,11 @@
 import express from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 import { logger } from './lib/logger.js';
 import { reqId } from './middleware/reqId.js';
 import { errorHandler } from './middleware/error.js';
 import { cacheBust } from './middleware/cache.js';
+import { corsMiddleware } from './middleware/cors.js';
 import { tenantResolver } from './middleware/tenant.js';
 import { storefrontRouter } from './modules/storefront/storefront.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -37,8 +37,28 @@ export function createApp() {
   const app = express();
 
   app.use(reqId);
-  app.use(helmet());
-  app.use(cors());
+  app.use(
+    helmet({
+      /*
+       * HSTS for a year, including subdomains. Every client store is a
+       * separate domain pointed at this one server, so a downgrade attack on
+       * any of them is a downgrade attack on the platform.
+       */
+      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+      /*
+       * This API serves JSON and image bytes, never HTML, so the default CSP
+       * is already as strict as it needs to be — but `frame-ancestors` is
+       * tightened to 'none': no page anywhere should be framing an API
+       * response.
+       */
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: { 'frame-ancestors': ["'none'"] },
+      },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+  app.use(corsMiddleware());
   app.use(express.json());
   app.use(pinoHttp({ logger, genReqId: (req) => req.id }));
   // Registered before the routes so its `finish` listener is attached before

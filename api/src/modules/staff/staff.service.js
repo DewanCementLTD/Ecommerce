@@ -6,6 +6,7 @@ import { parseJson, stringifyJson } from '../../lib/json.js';
 import { AppError } from '../../middleware/error.js';
 import { isUniqueViolation } from '../../lib/dbErrors.js';
 import { insertLog } from '../logs/logs.repo.js';
+import { revokeAdminSessions } from '../../lib/sessions.js';
 import * as repo from './staff.repo.js';
 
 function toAdminDto(row) {
@@ -26,7 +27,27 @@ export async function listAdmins({ companyId }) {
   return { rows: camelRows(rows) };
 }
 
+/**
+ * Second layer on the reserved-role rule in staff.schema.js.
+ *
+ * The schema is what a request goes through; this is what the *service* goes
+ * through, so a future caller that skips the schema — a script, a seed, a new
+ * endpoint that forgets to parse — still cannot mint a platform admin inside a
+ * company. Same reasoning as the repository layer re-stating `company_id`
+ * that VPD already enforces.
+ */
+function refuseReservedRole(role) {
+  if (typeof role === 'string' && role.trim().toLowerCase() === 'platform') {
+    throw new AppError(
+      400,
+      'ROLE_RESERVED',
+      'That role is reserved by the platform and cannot be assigned to store staff.',
+    );
+  }
+}
+
 export async function createAdmin({ companyId, actorAdminId, ip, email, name, role }) {
+  refuseReservedRole(role);
   const tempPassword = generateTempPassword();
   const passHash = await argon2.hash(tempPassword);
 
@@ -58,6 +79,7 @@ export async function createAdmin({ companyId, actorAdminId, ip, email, name, ro
 }
 
 export async function patchAdmin({ companyId, id, actorAdminId, ip, name, role, isActive, resetPassword }) {
+  refuseReservedRole(role);
   let tempPassword;
   let passHash;
   if (resetPassword) {
@@ -89,6 +111,19 @@ export async function patchAdmin({ companyId, id, actorAdminId, ip, name, role, 
     });
     await conn.commit();
   });
+
+  /*
+   * A new password or a deactivation has to end the sessions that already
+   * exist. Without this, resetting a compromised admin's password left every
+   * token they had issued working until it expired — up to seven days for a
+   * refresh token — which is the opposite of what a password reset is for.
+   *
+   * After the commit, deliberately: revoking sessions for a change that then
+   * rolled back would log someone out for nothing.
+   */
+  if (resetPassword || isActive === 0) {
+    await revokeAdminSessions(id);
+  }
 
   const row = await withCompany(companyId, (conn) => repo.findAdminById(conn, { companyId, id }));
   return { admin: toAdminDto(row), tempPassword };

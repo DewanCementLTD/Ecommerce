@@ -1,12 +1,26 @@
 import { Router } from 'express';
 import * as controller from './customers.controller.js';
 import { requireCustomerAuth } from '../../middleware/customerAuth.js';
+import { rateLimit } from '../../middleware/rateLimit.js';
+import { companyKey } from '../../lib/cache.js';
+
+/**
+ * Company-scoped: one store being hammered must not lock shoppers out of a
+ * different store that happens to share an IP (a corporate NAT, a mobile
+ * carrier). Register is limited as well as login — an unlimited register
+ * endpoint is a free way to fill a client's customer list with noise.
+ */
+const accountRateLimit = rateLimit({
+  keyFn: (req) => companyKey(req.companyId, 'account', 'attempt', req.ip),
+  limit: 20,
+  windowSeconds: 15 * 60,
+});
 
 /** Public, mounted at /shop/account behind tenantResolver only. */
 export const accountRouter = Router();
 
-accountRouter.post('/register', controller.postRegister);
-accountRouter.post('/login', controller.postLogin);
+accountRouter.post('/register', accountRateLimit, controller.postRegister);
+accountRouter.post('/login', accountRateLimit, controller.postLogin);
 accountRouter.post('/refresh', controller.postRefresh);
 accountRouter.post('/logout', requireCustomerAuth, controller.postLogout);
 accountRouter.get('/me', requireCustomerAuth, controller.getMe);

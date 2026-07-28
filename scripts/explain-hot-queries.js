@@ -52,7 +52,7 @@ function recording(conn, sink) {
  * The ten reads that carry the storefront and the admin. Ordered roughly by
  * how often a running store executes them.
  */
-async function hotQueries(conn, { companyId, productId, catId, collId, pageId, menuId }) {
+async function hotQueries(conn, { companyId, productId, collId, pageId, menuId }) {
   // 1. Catalog listing — every category page, every search, every product row
   //    section on the home page.
   await productsRepo.listProducts(conn, {
@@ -98,14 +98,12 @@ async function pickFixtures(companyId) {
   return withCompany(companyId, async (conn) => {
     const one = async (sql) => (await conn.execute(sql, { companyId })).rows[0] ?? {};
     const product = await one('SELECT id FROM products WHERE company_id = :companyId AND ROWNUM = 1');
-    const cat = await one('SELECT id FROM cats WHERE company_id = :companyId AND ROWNUM = 1');
     const coll = await one('SELECT id FROM colls WHERE company_id = :companyId AND ROWNUM = 1');
     const page = await one('SELECT id FROM pages WHERE company_id = :companyId AND ROWNUM = 1');
     const menu = await one('SELECT id FROM menus WHERE company_id = :companyId AND ROWNUM = 1');
     return {
       companyId,
       productId: product.ID ?? 0,
-      catId: cat.ID ?? 0,
       collId: coll.ID ?? 0,
       pageId: page.ID ?? 0,
       menuId: menu.ID ?? 0,
