@@ -9,9 +9,15 @@ import { NextResponse } from 'next/server';
  * the bare path is the canonical one.
  *
  * A first segment of two or three letters is treated as a language code. Every
- * real route prefix in this app is longer (cats, colls, products, pages,
- * search), so there is no ambiguity; an unknown code simply falls through to
- * the store's default, because the API ignores languages it does not know.
+ * real page route prefix in this app is longer (cats, colls, products, pages,
+ * search), so there is no ambiguity there; an unknown code simply falls
+ * through to the store's default, because the API ignores languages it does
+ * not know. `api` is the one three-letter exception — Phase 2's route
+ * handlers (cart/checkout/account) live under `/api/*`, which this same
+ * heuristic would otherwise rewrite to `/*` with `api` read as a language,
+ * 404ing every one of them. Excluded via `config.matcher` below, the same
+ * way `_next`/`fonts`/`favicon.ico` already are — this middleware never runs
+ * for those paths at all.
  */
 const LANG_SEGMENT = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i;
 
@@ -38,5 +44,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|fonts|favicon.ico).*)'],
+  matcher: ['/((?!api|_next|fonts|favicon.ico).*)'],
 };

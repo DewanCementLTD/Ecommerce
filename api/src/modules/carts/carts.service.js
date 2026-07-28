@@ -18,6 +18,11 @@ function currentPriceOf(variant) {
   return variant.salePrice ?? variant.price;
 }
 
+/** Same public path shape shop.dto.js's imageUrl() builds — the storefront's <Media>/mediaUrl() expect a path, not a bare id. */
+function imageUrlFor(image) {
+  return image ? { ...image, url: `/storefront/media/${image.mediaId}/file` } : null;
+}
+
 /** Borrows or creates the cart for this token, refreshing its 30-day expiry either way. */
 async function resolveCart({ companyId, token, customerId }) {
   return withCompany(companyId, async (conn) => {
@@ -65,7 +70,7 @@ async function toCartDto({ companyId, cart }) {
       inStock: !!v && v.stock >= row.QTY,
       maxQty: v?.stock ?? 0,
       lineTotal: round2(Number(unitPrice) * row.QTY),
-      product: v ? { id: v.productId, name: v.productName, slug: v.productSlug, image: v.image } : null,
+      product: v ? { id: v.productId, name: v.productName, slug: v.productSlug, image: imageUrlFor(v.image) } : null,
       variant: v ? { sku: v.sku, name: v.variantName, opts: v.opts } : null,
     };
   });

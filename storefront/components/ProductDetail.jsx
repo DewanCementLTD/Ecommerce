@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { mediaUrl, mediaSrcSet } from '../lib/media.js';
 import { Price } from './ui.jsx';
+import { useCart } from '../lib/CartContext.jsx';
+import { useToast } from '../lib/ToastContext.jsx';
 
 /**
  * The product page. Client-side because the gallery and the variant picker are
@@ -11,15 +13,15 @@ import { Price } from './ui.jsx';
  * A product with one variant hides the picker entirely — a "simple" product is
  * just a product with a single default variant, which keeps one code path
  * instead of two.
- *
- * Add-to-cart is deliberately inert. Carts arrive in Phase 2, and a button that
- * looks live but does nothing is worse than one that says so.
  */
 export function ProductDetail({ product, currency, storeName }) {
   const images = product.images?.length ? product.images : [];
   const [activeImage, setActiveImage] = useState(0);
   const [selection, setSelection] = useState(() => ({ ...(product.defaultVariant?.opts ?? {}) }));
   const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const { addItem } = useCart();
+  const toast = useToast();
 
   const hasOptions = product.options?.length > 0 && product.variants.length > 1;
 
@@ -31,6 +33,19 @@ export function ProductDetail({ product, currency, storeName }) {
       ) ?? null
     );
   }, [hasOptions, product.variants, product.defaultVariant, selection]);
+
+  async function handleAddToCart() {
+    if (!selectedVariant?.inStock || adding) return;
+    setAdding(true);
+    try {
+      await addItem(selectedVariant.id, quantity);
+      toast(`Added ${quantity} × ${product.name} to your basket.`);
+    } catch (err) {
+      toast(err.message, { tone: 'error' });
+    } finally {
+      setAdding(false);
+    }
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -53,7 +68,7 @@ export function ProductDetail({ product, currency, storeName }) {
   };
 
   return (
-    <div className="sf-container py-8 md:py-12">
+    <div className="sf-container py-8 pb-24 md:py-12 lg:pb-12">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -186,14 +201,14 @@ export function ProductDetail({ product, currency, storeName }) {
 
             <button
               type="button"
-              disabled
-              title="Online ordering is coming soon"
+              disabled={!selectedVariant?.inStock || adding}
+              onClick={handleAddToCart}
               className="inline-flex flex-1 items-center justify-center rounded-pill bg-primary px-6 py-3 text-sm font-semibold text-primary-ink disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Add to basket
+              {adding ? 'Adding…' : 'Add to basket'}
             </button>
           </div>
-          <p className="mt-2 text-xs text-muted">Online ordering opens soon — call the shop to order today.</p>
+          <p className="mt-2 text-xs text-muted">Cash on delivery — no online payment needed.</p>
 
           {product.descr ? (
             <div className="mt-10 border-t border-line pt-8">
@@ -217,6 +232,24 @@ export function ProductDetail({ product, currency, storeName }) {
               ))}
             </ul>
           ) : null}
+        </div>
+      </div>
+
+      {/* Sticky mobile add-to-cart — most traffic is mobile, and the main
+          button above scrolls out of view on a long description. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 p-3 backdrop-blur lg:hidden">
+        <div className="flex items-center gap-3">
+          {selectedVariant ? (
+            <Price price={selectedVariant.price} salePrice={selectedVariant.salePrice} currency={currency} className="flex-shrink-0" />
+          ) : null}
+          <button
+            type="button"
+            disabled={!selectedVariant?.inStock || adding}
+            onClick={handleAddToCart}
+            className="inline-flex flex-1 items-center justify-center rounded-pill bg-primary px-6 py-3 text-sm font-semibold text-primary-ink disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {adding ? 'Adding…' : !selectedVariant?.inStock ? 'Out of stock' : 'Add to basket'}
+          </button>
         </div>
       </div>
     </div>

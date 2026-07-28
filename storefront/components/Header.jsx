@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { mediaUrl } from '../lib/media.js';
+import { CartButton } from './CartButton.jsx';
 
 /**
  * Two header variants, chosen by `tokens.layout.header` — a value from the
@@ -96,26 +97,6 @@ function SearchForm({ hrefBase, label }) {
         <path d="m14 14 4 4" strokeLinecap="round" />
       </svg>
     </form>
-  );
-}
-
-function CartButton({ label }) {
-  // Inert until Phase 2 wires the cart. Disabled rather than a fake link, so it
-  // never promises something that does not happen.
-  return (
-    <button
-      type="button"
-      disabled
-      aria-label={label}
-      title="Coming soon"
-      className="relative rounded-pill p-2 text-ink/70 disabled:cursor-not-allowed"
-    >
-      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-        <path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20 8H6" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="10" cy="20" r="1.4" />
-        <circle cx="17" cy="20" r="1.4" />
-      </svg>
-    </button>
   );
 }
 

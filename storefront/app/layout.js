@@ -4,7 +4,11 @@ import { loadStore, langBase } from '../lib/store.js';
 import { tokensToCssVars, DEFAULT_TOKENS } from '../lib/theme.js';
 import { Header } from '../components/Header.jsx';
 import { Footer } from '../components/Footer.jsx';
+import { CartDrawer } from '../components/CartDrawer.jsx';
 import { StoreUnavailable, StoreNotFound } from '../components/Status.jsx';
+import { CartProvider } from '../lib/CartContext.jsx';
+import { AccountProvider } from '../lib/AccountContext.jsx';
+import { ToastProvider } from '../lib/ToastContext.jsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,20 +94,28 @@ export default async function RootLayout({ children }) {
           Skip to content
         </a>
 
-        <Header
-          company={company}
-          menu={menus.header}
-          tokens={tokens}
-          langs={langs}
-          lang={lang}
-          defaultLang={defaultLang}
-          hrefBase={base}
-          pathAfterLang={pathAfterLang}
-        />
+        <ToastProvider>
+          <AccountProvider>
+            <CartProvider>
+              <Header
+                company={company}
+                menu={menus.header}
+                tokens={tokens}
+                langs={langs}
+                lang={lang}
+                defaultLang={defaultLang}
+                hrefBase={base}
+                pathAfterLang={pathAfterLang}
+              />
 
-        <main id="main">{children}</main>
+              <main id="main">{children}</main>
 
-        <Footer company={company} menu={menus.footer} tokens={tokens} hrefBase={base} />
+              <Footer company={company} menu={menus.footer} tokens={tokens} hrefBase={base} />
+
+              <CartDrawer hrefBase={base} currency={company.currency} />
+            </CartProvider>
+          </AccountProvider>
+        </ToastProvider>
       </body>
     </html>
   );
