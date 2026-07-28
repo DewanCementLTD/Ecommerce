@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
 import { api } from '../lib/api.js';
+import { HealthCard } from '../components/HealthCard.jsx';
+
+/** Where the client admin panel answers, so "view as company" can open it. */
+const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:5173';
 
 export function CompanyDetailPage() {
   const { id } = useParams();
@@ -114,10 +118,31 @@ export function CompanyDetailPage() {
 
       {impersonateToken && (
         <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-          <p className="font-medium">Short-lived (10 min) scoped token:</p>
-          <p className="mt-1 break-all font-mono text-xs">{impersonateToken}</p>
+          <p className="font-medium">
+            A 10-minute token scoped to this company has been issued and logged.
+          </p>
+          {/*
+            The token is handed to the admin panel through the URL fragment,
+            which browsers do not send to servers and which does not appear in
+            access logs — unlike a query string. The panel picks it up, stores
+            it, strips it from the address bar, and shows a banner for as long
+            as it is in use.
+          */}
+          <a
+            href={`${ADMIN_URL}/#sf_impersonate=${encodeURIComponent(impersonateToken)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block rounded bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            Open the admin panel as {company.NAME}
+          </a>
+          <p className="mt-2 text-xs text-blue-800">
+            Everything done there is recorded against your platform account.
+          </p>
         </div>
       )}
+
+      <HealthCard companyId={id} />
 
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-gray-900">Details</h2>

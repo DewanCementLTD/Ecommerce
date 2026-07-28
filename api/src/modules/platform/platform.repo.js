@@ -203,3 +203,85 @@ export async function deleteDomainById(conn, id) {
   const result = await conn.execute('DELETE FROM domains WHERE id = :id', { id });
   return result.rowsAffected > 0;
 }
+
+/* ------------------------------------------------- monitoring (Phase 3, Task 4) */
+
+/**
+ * Platform-wide counts for the Super Admin dashboard. One query rather than
+ * one per status, so the numbers cannot disagree with each other.
+ */
+export async function countCompaniesByStatus(conn) {
+  const result = await conn.execute(
+    `SELECT status, COUNT(*) AS cnt FROM companies GROUP BY status`,
+  );
+  return result.rows;
+}
+
+/**
+ * Orders per company over two windows, plus revenue. Cancelled orders are
+ * counted but excluded from revenue — a store owner asking "how did today go"
+ * means money taken, not orders raised.
+ */
+export async function ordersPerCompany(conn, { limit }) {
+  const result = await conn.execute(
+    `SELECT c.id, c.name, c.status,
+            NVL(SUM(CASE WHEN o.placed_at >= SYSTIMESTAMP - INTERVAL '1' DAY THEN 1 ELSE 0 END), 0) AS orders_24h,
+            NVL(SUM(CASE WHEN o.placed_at >= SYSTIMESTAMP - INTERVAL '7' DAY THEN 1 ELSE 0 END), 0) AS orders_7d,
+            NVL(SUM(CASE WHEN o.placed_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+                          AND o.status <> 'cancelled' THEN o.total ELSE 0 END), 0) AS revenue_7d,
+            MAX(o.placed_at) AS last_order_at
+       FROM companies c
+       LEFT JOIN orders o ON o.company_id = c.id
+      GROUP BY c.id, c.name, c.status
+      ORDER BY orders_7d DESC, c.name ASC
+      FETCH FIRST :limit ROWS ONLY`,
+    { limit },
+  );
+  return result.rows;
+}
+
+/** Uploaded bytes and file count per company — the storage line of the dashboard. */
+export async function storagePerCompany(conn, { limit }) {
+  const result = await conn.execute(
+    `SELECT c.id, c.name,
+            NVL(SUM(m.size_bytes), 0) AS bytes,
+            COUNT(m.id) AS files
+       FROM companies c
+       LEFT JOIN media m ON m.company_id = c.id AND m.deleted_at IS NULL
+      GROUP BY c.id, c.name
+      ORDER BY bytes DESC
+      FETCH FIRST :limit ROWS ONLY`,
+    { limit },
+  );
+  return result.rows;
+}
+
+/**
+ * Everything the per-company health card shows, in one round trip: when the
+ * last order arrived, how much catalog exists, and when a human last logged
+ * in. Scalar subqueries rather than joins — each is an independent aggregate
+ * and joining them would multiply rows against each other.
+ */
+export async function companyHealth(conn, companyId) {
+  const result = await conn.execute(
+    `SELECT
+       (SELECT MAX(placed_at) FROM orders WHERE company_id = :companyId) AS last_order_at,
+       (SELECT COUNT(*) FROM orders WHERE company_id = :companyId) AS order_count,
+       (SELECT COUNT(*) FROM orders
+         WHERE company_id = :companyId AND status = 'new') AS orders_awaiting,
+       (SELECT COUNT(*) FROM products
+         WHERE company_id = :companyId AND deleted_at IS NULL) AS product_count,
+       (SELECT COUNT(*) FROM products
+         WHERE company_id = :companyId AND deleted_at IS NULL AND is_active = 1) AS active_product_count,
+       (SELECT COUNT(*) FROM customers WHERE company_id = :companyId) AS customer_count,
+       (SELECT NVL(SUM(size_bytes), 0) FROM media
+         WHERE company_id = :companyId AND deleted_at IS NULL) AS storage_bytes,
+       (SELECT MAX(last_login_at) FROM admins WHERE company_id = :companyId) AS admin_last_login_at,
+       (SELECT COUNT(*) FROM admins
+         WHERE company_id = :companyId AND is_active = 1) AS active_admin_count,
+       (SELECT MAX(created_at) FROM logs WHERE company_id = :companyId) AS last_activity_at
+     FROM dual`,
+    { companyId },
+  );
+  return result.rows[0] ?? null;
+}

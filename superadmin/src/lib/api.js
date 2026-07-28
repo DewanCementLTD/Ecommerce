@@ -47,4 +47,8 @@ export const api = {
   impersonate: (token, id) => request(`/platform/companies/${id}/impersonate`, { method: 'POST', token }),
 
   listLogs: (token, params) => request(`/platform/logs?${new URLSearchParams(params)}`, { token }),
+
+  getOverview: (token) => request('/platform/overview', { token }),
+  getCompanyHealth: (token, id, withSsl = false) =>
+    request(`/platform/companies/${id}/health${withSsl ? '?ssl=1' : ''}`, { token }),
 };

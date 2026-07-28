@@ -24,15 +24,33 @@ export async function insertLog(conn, { companyId, adminId, action, entity, enti
   );
 }
 
-export async function listLogs(conn, { page, pageSize, companyId, action }) {
+/**
+ * The audit browser's filters (Phase 3, Task 4). Every one is optional and
+ * expressed as `(:bind IS NULL OR column = :bind)` so a single statement
+ * serves every combination — no string assembly, one plan in the cursor cache.
+ *
+ * `dateFrom`/`dateTo` are what make this usable during an incident: "what
+ * happened between 14:00 and 15:00" is the first question asked, and paging
+ * back through every action ever taken to find it is not an answer.
+ */
+export async function listLogs(conn, { page, pageSize, companyId, action, adminId, dateFrom, dateTo }) {
   const offset = (page - 1) * pageSize;
   const filterSql = `(:companyId1 IS NULL OR company_id = :companyId2)
-       AND (:action1 IS NULL OR action = :action2)`;
+       AND (:action1 IS NULL OR action = :action2)
+       AND (:adminId1 IS NULL OR admin_id = :adminId2)
+       AND (:dateFrom1 IS NULL OR created_at >= :dateFrom2)
+       AND (:dateTo1 IS NULL OR created_at <= :dateTo2)`;
   const filterBinds = {
     companyId1: companyId ?? null,
     companyId2: companyId ?? null,
     action1: action ?? null,
     action2: action ?? null,
+    adminId1: adminId ?? null,
+    adminId2: adminId ?? null,
+    dateFrom1: dateFrom ? new Date(dateFrom) : null,
+    dateFrom2: dateFrom ? new Date(dateFrom) : null,
+    dateTo1: dateTo ? new Date(dateTo) : null,
+    dateTo2: dateTo ? new Date(dateTo) : null,
   };
 
   const rowsResult = await conn.execute(

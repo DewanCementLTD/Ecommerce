@@ -41,9 +41,9 @@ export default [
     },
   },
   {
-    // ui-check drives a real browser: the audit function it injects runs in the
-    // page, not in Node, so it legitimately references document/window.
-    files: ['scripts/ui-check.js'],
+    // These drive a real browser: the functions they inject run in the page,
+    // not in Node, so they legitimately reference document/window.
+    files: ['scripts/ui-check.js', 'scripts/smoke-panels.js'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {

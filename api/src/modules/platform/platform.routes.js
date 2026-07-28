@@ -12,15 +12,19 @@ import {
   deleteDomain,
   postImpersonate,
   getLogs,
+  getOverview,
+  getCompanyHealth,
 } from './platform.controller.js';
 
 export const platformRouter = Router();
 
+platformRouter.get('/overview', getOverview);
 platformRouter.get('/logs', getLogs);
 platformRouter.post('/companies', postCompany);
 platformRouter.get('/companies', getCompanies);
 platformRouter.get('/companies/:id', getCompany);
 platformRouter.patch('/companies/:id', patchCompany);
+platformRouter.get('/companies/:id/health', getCompanyHealth);
 platformRouter.get('/companies/:id/domains', getCompanyDomains);
 platformRouter.get('/companies/:id/settings', getCompanySettings);
 platformRouter.post('/companies/:id/suspend', postSuspend);

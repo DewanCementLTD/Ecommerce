@@ -6,6 +6,8 @@ import { generateTempPassword } from '../../lib/password.js';
 import { signAccessToken } from '../../lib/jwt.js';
 import { AppError } from '../../middleware/error.js';
 import { insertLog, listLogs as listLogsRows } from '../logs/logs.repo.js';
+import { readMetrics } from '../../middleware/metrics.js';
+import { checkSsl } from '../../lib/ssl.js';
 import { DEFAULT_HOME_SECTIONS, defaultSettings } from '@storeforge/shared';
 import {
   insertCompany,
@@ -29,6 +31,10 @@ import {
   deleteDomainById,
   listDomainsByCompany,
   listSettingsByCompany,
+  countCompaniesByStatus,
+  ordersPerCompany,
+  storagePerCompany,
+  companyHealth,
 } from './platform.repo.js';
 
 /** Step 6: every store starts with these four pages. */
@@ -311,17 +317,34 @@ export async function removeDomain({ domainId, actorAdminId, ip }) {
   await invalidateHost(domain.HOST);
 }
 
-export async function listLogs({ page, pageSize, companyId, action }) {
-  const { rows, total } = await withPlatform((conn) => listLogsRows(conn, { page, pageSize, companyId, action }));
-  return { rows, total, page, pageSize };
+export async function listLogs(query) {
+  const { rows, total } = await withPlatform((conn) => listLogsRows(conn, query));
+  return { rows, total, page: query.page, pageSize: query.pageSize };
 }
 
 export async function impersonate({ companyId, actorAdminId, ip }) {
-  await getCompany({ id: companyId });
+  const company = await getCompany({ id: companyId });
 
   const jti = randomUUID();
+  /*
+   * `imp` is what makes the admin panel's banner possible.
+   *
+   * Without it the token is indistinguishable from a real owner login — the
+   * panel would show the store exactly as its owner sees it, and whoever is
+   * driving would have nothing reminding them that every action they take is
+   * being taken against a client's live data under a platform account. The
+   * company name rides along so the banner can name the store without a
+   * second request.
+   */
   const accessToken = signAccessToken(
-    { sub: actorAdminId, company_id: companyId, role: 'owner', jti },
+    {
+      sub: actorAdminId,
+      company_id: companyId,
+      role: 'owner',
+      jti,
+      imp: true,
+      imp_company: company.NAME,
+    },
     { expiresIn: '10m' },
   );
 
@@ -338,5 +361,94 @@ export async function impersonate({ companyId, actorAdminId, ip }) {
     await conn.commit();
   });
 
-  return { accessToken };
+  return { accessToken, company: { id: company.ID, name: company.NAME } };
+}
+
+/* ------------------------------------------------- monitoring (Phase 3, Task 4) */
+
+/**
+ * The Super Admin dashboard, in one call.
+ *
+ * Every number here crosses company boundaries by design, which is exactly
+ * what `withPlatform` exists for — and why this router is `requireRole('platform')`.
+ */
+export async function platformOverview({ limit = 10 } = {}) {
+  const [statusRows, orderRows, storageRows, requestMetrics] = await Promise.all([
+    withPlatform((conn) => countCompaniesByStatus(conn)),
+    withPlatform((conn) => ordersPerCompany(conn, { limit })),
+    withPlatform((conn) => storagePerCompany(conn, { limit })),
+    readMetrics({ slowestLimit: 8 }),
+  ]);
+
+  const byStatus = Object.fromEntries(statusRows.map((row) => [row.STATUS, row.CNT]));
+
+  return {
+    companies: {
+      total: statusRows.reduce((sum, row) => sum + row.CNT, 0),
+      active: byStatus.active ?? 0,
+      suspended: byStatus.suspended ?? 0,
+    },
+    orders: orderRows.map((row) => ({
+      companyId: row.ID,
+      name: row.NAME,
+      status: row.STATUS,
+      orders24h: row.ORDERS_24H,
+      orders7d: row.ORDERS_7D,
+      revenue7d: row.REVENUE_7D,
+      lastOrderAt: row.LAST_ORDER_AT,
+    })),
+    storage: storageRows.map((row) => ({
+      companyId: row.ID,
+      name: row.NAME,
+      bytes: row.BYTES,
+      files: row.FILES,
+    })),
+    requests: requestMetrics,
+  };
+}
+
+/**
+ * The per-company health card. `checkSsl` opens a real TLS connection per
+ * domain, so it is opt-in (`?ssl=1`) rather than paid for on every load.
+ */
+export async function companyHealthCard({ companyId, includeSsl = false }) {
+  const company = await getCompany({ id: companyId });
+  const [health, domains] = await Promise.all([
+    withPlatform((conn) => companyHealth(conn, companyId)),
+    withPlatform((conn) => listDomainsByCompany(conn, companyId)),
+  ]);
+
+  const domainRows = domains.map((row) => ({
+    id: row.ID,
+    host: row.HOST,
+    isPrimary: row.IS_PRIMARY === 1,
+    createdAt: row.CREATED_AT,
+  }));
+
+  const ssl = includeSsl
+    ? await Promise.all(domainRows.map((domain) => checkSsl(domain.host)))
+    : null;
+
+  return {
+    company: {
+      id: company.ID,
+      name: company.NAME,
+      status: company.STATUS,
+      createdAt: company.CREATED_AT,
+    },
+    health: {
+      lastOrderAt: health?.LAST_ORDER_AT ?? null,
+      orderCount: health?.ORDER_COUNT ?? 0,
+      ordersAwaiting: health?.ORDERS_AWAITING ?? 0,
+      productCount: health?.PRODUCT_COUNT ?? 0,
+      activeProductCount: health?.ACTIVE_PRODUCT_COUNT ?? 0,
+      customerCount: health?.CUSTOMER_COUNT ?? 0,
+      storageBytes: health?.STORAGE_BYTES ?? 0,
+      adminLastLoginAt: health?.ADMIN_LAST_LOGIN_AT ?? null,
+      activeAdminCount: health?.ACTIVE_ADMIN_COUNT ?? 0,
+      lastActivityAt: health?.LAST_ACTIVITY_AT ?? null,
+    },
+    domains: domainRows,
+    ssl,
+  };
 }

@@ -14,6 +14,9 @@ export function Layout() {
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3">
           <nav className="flex flex-wrap gap-1" aria-label="Main navigation">
+            <NavLink to="/dashboard" className={navLinkClass} end>
+              Dashboard
+            </NavLink>
             <NavLink to="/companies" className={navLinkClass} end>
               Companies
             </NavLink>

@@ -5,6 +5,8 @@ import { logger } from './lib/logger.js';
 import { reqId } from './middleware/reqId.js';
 import { errorHandler } from './middleware/error.js';
 import { cacheBust } from './middleware/cache.js';
+import { metrics } from './middleware/metrics.js';
+import { healthRouter } from './modules/health/health.routes.js';
 import { corsMiddleware } from './middleware/cors.js';
 import { tenantResolver } from './middleware/tenant.js';
 import { storefrontRouter } from './modules/storefront/storefront.routes.js';
@@ -64,10 +66,9 @@ export function createApp() {
   // Registered before the routes so its `finish` listener is attached before
   // any handler can send a response.
   app.use(cacheBust);
+  app.use(metrics);
 
-  app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-  });
+  app.use(healthRouter);
 
   app.use('/storefront', tenantResolver, storefrontRouter);
   app.use('/shop', tenantResolver, shopRouter);

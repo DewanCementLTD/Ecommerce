@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
+import { ImpersonationBanner } from './ImpersonationBanner.jsx';
 
 const NAV_SECTIONS = [
   {
@@ -47,7 +48,9 @@ export function Layout() {
   const [navOpen, setNavOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 lg:flex">
+    <>
+      <ImpersonationBanner />
+      <div className="min-h-screen bg-gray-50 lg:flex">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:shadow"
@@ -110,9 +113,10 @@ export function Layout() {
         </div>
       </aside>
 
-      <main id="main-content" className="min-w-0 flex-1 px-4 py-6 lg:px-8">
-        <Outlet />
-      </main>
-    </div>
+        <main id="main-content" className="min-w-0 flex-1 px-4 py-6 lg:px-8">
+          <Outlet />
+        </main>
+      </div>
+    </>
   );
 }

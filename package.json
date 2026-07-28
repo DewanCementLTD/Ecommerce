@@ -29,7 +29,8 @@
     "backfill:avif": "node scripts/backfill-avif.js",
     "loadtest": "node scripts/loadtest.js",
     "seed:loadtest": "node scripts/seed-loadtest.js",
-    "explain": "node scripts/explain-hot-queries.js"
+    "explain": "node scripts/explain-hot-queries.js",
+    "smoke:panels": "node scripts/smoke-panels.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

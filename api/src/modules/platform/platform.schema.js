@@ -41,4 +41,9 @@ export const logsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   companyId: z.coerce.number().int().optional(),
   action: z.string().max(100).optional(),
+  adminId: z.coerce.number().int().optional(),
+  // Accepted as anything Date can parse, so both a date and a full timestamp
+  // work from the UI's `datetime-local` input.
+  dateFrom: z.string().min(1).max(40).optional(),
+  dateTo: z.string().min(1).max(40).optional(),
 });

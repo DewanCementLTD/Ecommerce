@@ -137,3 +137,25 @@ export async function postImpersonate(req, res, next) {
     next(err);
   }
 }
+
+export async function getOverview(req, res, next) {
+  try {
+    res.json(await platformService.platformOverview({ limit: 10 }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getCompanyHealth(req, res, next) {
+  try {
+    res.json(
+      await platformService.companyHealthCard({
+        companyId: Number(req.params.id),
+        // Opt-in: each domain costs a real TLS handshake.
+        includeSsl: req.query.ssl === '1',
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+}

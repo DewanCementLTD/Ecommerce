@@ -3,6 +3,7 @@ import { AuthProvider } from './lib/AuthContext.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { Layout } from './components/Layout.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
+import { DashboardPage } from './pages/DashboardPage.jsx';
 import { CompaniesListPage } from './pages/CompaniesListPage.jsx';
 import { CompanyCreatePage } from './pages/CompanyCreatePage.jsx';
 import { CompanyDetailPage } from './pages/CompanyDetailPage.jsx';
@@ -21,12 +22,13 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/companies" element={<CompaniesListPage />} />
             <Route path="/companies/new" element={<CompanyCreatePage />} />
             <Route path="/companies/:id" element={<CompanyDetailPage />} />
             <Route path="/logs" element={<LogsPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/companies" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

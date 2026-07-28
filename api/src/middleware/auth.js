@@ -41,6 +41,9 @@ export async function requireAuth(req, res, next) {
       role: decoded.role,
       jti: decoded.jti,
       exp: decoded.exp,
+      // Present only on tokens minted by POST /platform/companies/:id/impersonate.
+      impersonating: decoded.imp === true,
+      impersonatedCompany: decoded.imp_company ?? null,
     };
 
     next();
