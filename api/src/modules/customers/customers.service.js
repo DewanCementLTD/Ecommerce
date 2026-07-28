@@ -192,6 +192,13 @@ export async function listAddrs({ companyId, customerId }) {
   return { rows: camelRows(rows) };
 }
 
+/** Used by checkout (Task 4) to snapshot a saved address without duplicating its shape. */
+export async function getAddr({ companyId, customerId, id }) {
+  const row = await withCompany(companyId, (conn) => repo.findAddrById(conn, { companyId, customerId, id }));
+  if (!row) throw new AppError(404, 'ADDR_NOT_FOUND', 'Address not found.');
+  return camelRow(row);
+}
+
 export async function createAddr({ companyId, customerId, ...input }) {
   await withCompany(companyId, async (conn) => {
     if (input.isDefault) await repo.clearDefaultAddr(conn, { companyId, customerId });

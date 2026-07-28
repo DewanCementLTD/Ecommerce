@@ -475,6 +475,29 @@ export async function listVariants({ companyId, productId }) {
 }
 
 /**
+ * Checkout's one write into catalog data (Task 4) — takes the checkout
+ * transaction's own connection rather than opening its own withCompany, the
+ * same cross-module-transaction pattern customers.service.js's
+ * findOrCreateGuestCustomer uses. Also writes the audit log entry on the same
+ * connection, so a rolled-back order cannot leave behind a log claiming
+ * stock moved when it didn't.
+ */
+export async function decrementStockForOrder(conn, { companyId, variantId, qty, orderId }) {
+  const ok = await repo.decrementStockConditional(conn, { companyId, id: variantId, qty });
+  if (!ok) return false;
+  await insertLog(conn, {
+    companyId,
+    adminId: null,
+    action: 'stock_order_decrement',
+    entity: 'variant',
+    entityId: variantId,
+    meta: { orderId, qty },
+    ip: null,
+  });
+  return true;
+}
+
+/**
  * The cart/checkout module's one window into catalog data — never queries
  * variants/products SQL of its own, per the "SQL only in the owning module's
  * repo" rule. Returns a map keyed by variant id so a missing id (deleted

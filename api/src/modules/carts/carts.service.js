@@ -161,3 +161,17 @@ export async function loadCartForCheckout({ companyId, token }) {
   const dto = await toCartDto({ companyId, cart });
   return { cartId: cart.ID, ...dto };
 }
+
+/**
+ * The rest of checkout's cart access, once it's inside its own transaction —
+ * both take the caller's connection instead of opening a new one, so the
+ * cart read and the order write are one atomic operation.
+ */
+export async function findCartRowForUpdate(conn, { companyId, token }) {
+  if (!token) return null;
+  return repo.findCartByToken(conn, { companyId, token });
+}
+
+export async function getCartItemsForUpdate(conn, { companyId, cartId }) {
+  return repo.listCartItems(conn, { companyId, cartId });
+}

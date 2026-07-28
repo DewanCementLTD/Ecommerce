@@ -269,6 +269,22 @@ export async function setVariantStock(conn, { companyId, id, stock }) {
 }
 
 /**
+ * Checkout's stock guard: the WHERE clause is the whole mechanism. Two
+ * concurrent checkouts against the last unit both issue this UPDATE; Oracle
+ * serializes them via the row lock, the first to commit wins, and the second
+ * sees stock already too low and gets rowsAffected 0 — no race window, no
+ * separate SELECT ... FOR UPDATE needed.
+ */
+export async function decrementStockConditional(conn, { companyId, id, qty }) {
+  const result = await conn.execute(
+    `UPDATE variants SET stock = stock - :qty, updated_at = SYSTIMESTAMP
+      WHERE id = :id AND company_id = :companyId AND stock >= :qty`,
+    { id, companyId, qty },
+  );
+  return result.rowsAffected > 0;
+}
+
+/**
  * The unique index only allows one default per product, so the old default has
  * to be cleared before the new one is set — never the other way round.
  */

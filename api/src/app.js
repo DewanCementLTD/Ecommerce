@@ -28,6 +28,7 @@ import { settingsRouter } from './modules/settings/settings.routes.js';
 import { adminsRouter, rolesRouter } from './modules/staff/staff.routes.js';
 import { accountRouter, customersRouter } from './modules/customers/customers.routes.js';
 import { cartRouter } from './modules/carts/carts.routes.js';
+import { checkoutRouter, myOrdersRouter, ordersRouter } from './modules/orders/orders.routes.js';
 import { optionalCustomerAuth } from './middleware/customerAuth.js';
 
 export function createApp() {
@@ -45,8 +46,13 @@ export function createApp() {
 
   app.use('/storefront', tenantResolver, storefrontRouter);
   app.use('/shop', tenantResolver, shopRouter);
+  // More specific /shop/account/orders mounted before the general /shop/account,
+  // so it's never shadowed by accountRouter falling through on an unmatched path.
+  app.use('/shop/account/orders', tenantResolver, myOrdersRouter);
   app.use('/shop/account', tenantResolver, accountRouter);
   app.use('/shop/cart', tenantResolver, optionalCustomerAuth, cartRouter);
+  app.use('/shop/checkout', tenantResolver, optionalCustomerAuth, checkoutRouter);
+  app.use('/orders', requireAuth, requireCompany, ordersRouter);
   app.use('/customers', requireAuth, requireCompany, customersRouter);
   app.use('/auth', authRouter);
   app.use('/media', requireAuth, requireCompany, mediaRouter);

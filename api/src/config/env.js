@@ -27,6 +27,18 @@ export const env = {
     accessTtl: process.env.JWT_ACCESS_TTL ?? '15m',
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '7d',
   },
+  mail: {
+    // 'log' (default, no setup needed — this dev box has no SMTP catcher) or 'smtp'.
+    provider: process.env.EMAIL_PROVIDER ?? 'log',
+    smtp: {
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT ?? 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+      from: process.env.SMTP_FROM ?? 'no-reply@example.com',
+    },
+  },
   db: {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
