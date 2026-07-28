@@ -40,6 +40,15 @@ export const env = {
     },
   },
   /**
+   * Error tracking. With no DSN the API reports errors to its own log and
+   * loads no agent at all — see lib/errorTracker.js.
+   */
+  sentry: {
+    dsn: process.env.SENTRY_DSN || null,
+    release: process.env.SENTRY_RELEASE || null,
+  },
+
+  /**
    * Origins allowed through CORS on top of the stores' own domains: the admin
    * and Super Admin panels, which are served from somewhere that is not a
    * client domain. Comma-separated.

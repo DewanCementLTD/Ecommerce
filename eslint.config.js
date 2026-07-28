@@ -24,6 +24,16 @@ export default [
     },
   },
   {
+    // PM2 reads its config with `require`, so this one file is CommonJS in a
+    // repo that is otherwise ESM — `__dirname` and friends are real here.
+    files: ['**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: { ...globals.node },
+    },
+  },
+  {
     files: ['admin/**/*.{js,jsx}', 'superadmin/**/*.{js,jsx}', 'storefront/**/*.{js,jsx}'],
     plugins: { react, 'react-hooks': reactHooks },
     languageOptions: {

@@ -30,7 +30,10 @@
     "loadtest": "node scripts/loadtest.js",
     "seed:loadtest": "node scripts/seed-loadtest.js",
     "explain": "node scripts/explain-hot-queries.js",
-    "smoke:panels": "node scripts/smoke-panels.js"
+    "smoke:panels": "node scripts/smoke-panels.js",
+    "uptime": "node scripts/uptime-check.js",
+    "backup:company": "node scripts/backup-company.js",
+    "restore:company": "node scripts/restore-company.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

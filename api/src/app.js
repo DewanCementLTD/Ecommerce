@@ -62,7 +62,23 @@ export function createApp() {
   );
   app.use(corsMiddleware());
   app.use(express.json());
-  app.use(pinoHttp({ logger, genReqId: (req) => req.id }));
+  /*
+   * Every request line carries `req_id` and `company_id`
+   * (docs/04-PHASE-3-launch.md, Task 5). The company is only known after the
+   * tenant resolver or auth middleware has run, which is *after* pino-http
+   * logs the request — so it is read at serialization time from the request
+   * object, which by then has it.
+   */
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req) => req.id,
+      customProps: (req) => ({
+        company_id: req.companyId ?? req.admin?.companyId ?? null,
+        req_id: req.id,
+      }),
+    }),
+  );
   // Registered before the routes so its `finish` listener is attached before
   // any handler can send a response.
   app.use(cacheBust);

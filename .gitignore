@@ -26,3 +26,4 @@ Thumbs.db
 
 # Claude Code local session settings
 .claude/
+backups/
