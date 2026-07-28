@@ -8,6 +8,10 @@ import { DashboardPage } from './pages/DashboardPage.jsx';
 import { ComingSoonPage } from './pages/ComingSoonPage.jsx';
 import { ProductsListPage } from './pages/products/ProductsListPage.jsx';
 import { ProductEditorPage } from './pages/products/ProductEditorPage.jsx';
+import { CategoriesPage } from './pages/categories/CategoriesPage.jsx';
+import { CollectionsListPage } from './pages/collections/CollectionsListPage.jsx';
+import { CollectionEditorPage } from './pages/collections/CollectionEditorPage.jsx';
+import { MediaLibraryPage } from './pages/media/MediaLibraryPage.jsx';
 
 export default function App() {
   return (
@@ -27,9 +31,11 @@ export default function App() {
             <Route path="/products" element={<ProductsListPage />} />
             <Route path="/products/new" element={<ProductEditorPage />} />
             <Route path="/products/:id" element={<ProductEditorPage />} />
-            <Route path="/categories" element={<ComingSoonPage title="Categories" />} />
-            <Route path="/collections" element={<ComingSoonPage title="Collections" />} />
-            <Route path="/media" element={<ComingSoonPage title="Media" />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/collections" element={<CollectionsListPage />} />
+            <Route path="/collections/new" element={<CollectionEditorPage />} />
+            <Route path="/collections/:id" element={<CollectionEditorPage />} />
+            <Route path="/media" element={<MediaLibraryPage />} />
             <Route path="/pages" element={<ComingSoonPage title="Pages" />} />
             <Route path="/banners" element={<ComingSoonPage title="Banners" />} />
             <Route path="/menus" element={<ComingSoonPage title="Menus" />} />
