@@ -35,6 +35,14 @@ const PLATFORM_TABLES = [
   'menus',
   'menu_items',
   'trans',
+  'customers',
+  'addrs',
+  'carts',
+  'cart_items',
+  'order_seq',
+  'orders',
+  'order_items',
+  'order_log',
 ];
 
 async function run() {

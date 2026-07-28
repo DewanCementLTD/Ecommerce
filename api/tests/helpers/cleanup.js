@@ -14,6 +14,14 @@
 
 /** Child-before-parent. Self-referencing tables appear twice, children first. */
 const DELETE_ORDER = [
+  'DELETE FROM order_log WHERE company_id = :id',
+  'DELETE FROM order_items WHERE company_id = :id',
+  'DELETE FROM orders WHERE company_id = :id',
+  'DELETE FROM cart_items WHERE company_id = :id',
+  'DELETE FROM carts WHERE company_id = :id',
+  'DELETE FROM addrs WHERE company_id = :id',
+  'DELETE FROM customers WHERE company_id = :id',
+  'DELETE FROM order_seq WHERE company_id = :id',
   'DELETE FROM coll_prods WHERE company_id = :id',
   'DELETE FROM prod_cats WHERE company_id = :id',
   'DELETE FROM prod_imgs WHERE company_id = :id',

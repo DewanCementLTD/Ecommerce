@@ -13,6 +13,7 @@ import {
   insertAdmin,
   insertSetting,
   insertLang,
+  insertOrderSeq,
   insertPage,
   insertSection,
   insertStarterCat,
@@ -93,6 +94,7 @@ export async function provisionCompany(input, { actorAdminId, ip }) {
         name: input.defaultLangName,
         isDefault: true,
       });
+      await insertOrderSeq(conn, { companyId });
 
       // Step 6 — default pages.
       const pageIds = {};

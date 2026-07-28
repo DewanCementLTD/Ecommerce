@@ -56,6 +56,11 @@ export async function insertLang(conn, { companyId, code, name, isDefault }) {
   );
 }
 
+/** Phase 2: seeds the per-company order-number counter (007_commerce.sql). */
+export async function insertOrderSeq(conn, { companyId }) {
+  await conn.execute('INSERT INTO order_seq (company_id) VALUES (:companyId)', { companyId });
+}
+
 /* ------------------------------------------------------------------------ */
 /* Provisioning steps 6-9 of 00-SYSTEM-DESIGN.md §6 — the tables these write to
 /* did not exist in Phase 0. All run on the same connection and transaction as

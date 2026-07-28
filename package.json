@@ -23,6 +23,7 @@
     "seed:platform-admin": "node scripts/seed-platform-admin.js",
     "seed:demo": "node scripts/seed-demo.js",
     "seed:demo-catalog": "node scripts/seed-demo-catalog.js",
+    "backfill:order-seq": "node scripts/backfill-order-seq.js",
     "ui:check": "node scripts/ui-check.js"
   },
   "devDependencies": {
