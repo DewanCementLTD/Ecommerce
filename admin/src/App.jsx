@@ -14,6 +14,9 @@ import { CollectionEditorPage } from './pages/collections/CollectionEditorPage.j
 import { MediaLibraryPage } from './pages/media/MediaLibraryPage.jsx';
 import { PagesListPage } from './pages/pages/PagesListPage.jsx';
 import { PageSectionsPage } from './pages/pages/PageSectionsPage.jsx';
+import { BannersPage } from './pages/content/BannersPage.jsx';
+import { MenusPage } from './pages/content/MenusPage.jsx';
+import { LanguagesPage } from './pages/content/LanguagesPage.jsx';
 
 export default function App() {
   return (
@@ -40,9 +43,9 @@ export default function App() {
             <Route path="/media" element={<MediaLibraryPage />} />
             <Route path="/pages" element={<PagesListPage />} />
             <Route path="/pages/:id" element={<PageSectionsPage />} />
-            <Route path="/banners" element={<ComingSoonPage title="Banners" />} />
-            <Route path="/menus" element={<ComingSoonPage title="Menus" />} />
-            <Route path="/translations" element={<ComingSoonPage title="Translations" />} />
+            <Route path="/banners" element={<BannersPage />} />
+            <Route path="/menus" element={<MenusPage />} />
+            <Route path="/translations" element={<LanguagesPage />} />
             <Route path="/orders" element={<ComingSoonPage title="Orders" />} />
             <Route path="/settings" element={<ComingSoonPage title="Settings" />} />
             <Route path="/staff" element={<ComingSoonPage title="Staff" />} />

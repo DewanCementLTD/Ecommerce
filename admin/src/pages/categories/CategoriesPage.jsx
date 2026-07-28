@@ -4,37 +4,10 @@ import { api } from '../../lib/api.js';
 import { useAuth } from '../../lib/AuthContext.jsx';
 import { SortableList, DragHandle } from '../../components/SortableList.jsx';
 import { ConfirmButton } from '../../components/ConfirmButton.jsx';
+import { clampDepths, deriveParentsAndPositions, flattenTree } from '../../lib/outline.js';
 
-function flatten(nodes, depth = 0) {
-  return nodes.flatMap((node) => [
-    { id: node.id, name: node.name, isActive: node.isActive, depth },
-    ...flatten(node.children ?? [], depth + 1),
-  ]);
-}
-
-/** Clamp depths so drag/indent never produces an impossible jump (e.g. depth +2 in one step). */
-function clampDepths(nodes) {
-  let prevDepth = -1;
-  return nodes.map((n) => {
-    const depth = Math.min(n.depth, prevDepth + 1);
-    prevDepth = depth;
-    return { ...n, depth };
-  });
-}
-
-/** Standard outliner rule: a node's parent is the nearest preceding node one level shallower. */
-function deriveParentsAndPositions(nodes) {
-  const stack = [];
-  const siblingCount = new Map();
-  return nodes.map((node) => {
-    while (stack.length && stack[stack.length - 1].depth >= node.depth) stack.pop();
-    const parent = stack.length ? stack[stack.length - 1] : null;
-    const key = parent ? parent.id : 'root';
-    const position = siblingCount.get(key) ?? 0;
-    siblingCount.set(key, position + 1);
-    stack.push({ depth: node.depth, id: node.id });
-    return { ...node, parentId: parent ? parent.id : null, position };
-  });
+function flatten(nodes) {
+  return flattenTree(nodes).map((n) => ({ id: n.id, name: n.name, isActive: n.isActive, depth: n.depth }));
 }
 
 export function CategoriesPage() {
