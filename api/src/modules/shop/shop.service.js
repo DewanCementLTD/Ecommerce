@@ -6,6 +6,7 @@ import { loadTranslations, applyTranslations } from '../i18n/i18n.service.js';
 import * as contentService from '../content/content.service.js';
 import { resolveSections } from './shop.sections.js';
 import { imageUrl, toCard, toDetail, toPublicCat, toPublicTreeNode } from './shop.dto.js';
+import { cached, TTL } from '../../lib/cache.js';
 
 /**
  * The public face of the catalog.
@@ -198,6 +199,12 @@ export async function search({ companyId, q, page, pageSize, lang, defaultLang }
  * does not have to know how.
  */
 export async function getMenus({ companyId, lang, defaultLang }) {
+  return cached(companyId, `menus:${lang || defaultLang || 'default'}`, TTL.menus, () =>
+    buildMenus({ companyId, lang, defaultLang }),
+  );
+}
+
+async function buildMenus({ companyId, lang, defaultLang }) {
   const menus = {};
 
   for (const code of ['header', 'footer']) {
@@ -273,7 +280,28 @@ async function resolveMenuTargets({ companyId, items }) {
   return targets;
 }
 
-async function loadPageWithSections({ companyId, page, lang, defaultLang }) {
+function loadPageWithSections({ companyId, page, lang, defaultLang }) {
+  /*
+   * Rendered page sections, cached for 10 minutes (`00-SYSTEM-DESIGN.md §7`).
+   * This is by far the most expensive read in the system — a home page is one
+   * query per section plus the products and categories each one resolves —
+   * and it is what every visitor hits first.
+   *
+   * Keyed by page *and* language, because a section's settings are
+   * translatable and the resolved product cards inside it are too. Publishing
+   * a page, or saving any product, drops every `sections:*` entry for the
+   * company (content.service.js / products.service.js), so a price change is
+   * never 10 minutes stale on the home page.
+   */
+  return cached(
+    companyId,
+    `sections:${page.slug}:${lang || defaultLang || 'default'}`,
+    TTL.sections,
+    () => buildPageWithSections({ companyId, page, lang, defaultLang }),
+  );
+}
+
+async function buildPageWithSections({ companyId, page, lang, defaultLang }) {
   const { rows } = await contentService.listSections({ companyId, pageId: page.id, isActive: 1 });
 
   const translated = await translate({

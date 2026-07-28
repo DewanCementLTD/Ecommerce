@@ -5,6 +5,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { initPool, closePool, withPlatform } from '../../src/db/pool.js';
 import { closeRedis, getRedis } from '../../src/lib/redis.js';
+import { invalidate } from '../../src/lib/cache.js';
 
 /**
  * The public storefront is the one surface with no authentication at all: the
@@ -117,8 +118,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await getRedis().del(`host:${hostA}`);
-  await getRedis().del(`host:${hostB}`);
+  await getRedis().del(`sf:host:${hostA}`);
+  await getRedis().del(`sf:host:${hostB}`);
 
   await withPlatform(async (conn) => {
     const companies = { a: companyAId, b: companyBId };
@@ -244,6 +245,9 @@ describe('shop: the host header is the only tenant boundary (release gate)', () 
       await conn.execute(`UPDATE companies SET status = 'suspended' WHERE id = :id`, { id: companyAId });
       await conn.commit();
     });
+    // See the same note in tests/integration/shop.test.js: the cached company
+    // row has to be dropped when the row is changed outside the service.
+    await invalidate(companyAId, 'company');
 
     try {
       expect((await fromA('/shop/products')).status).toBe(503);
@@ -253,6 +257,7 @@ describe('shop: the host header is the only tenant boundary (release gate)', () 
         await conn.execute(`UPDATE companies SET status = 'active' WHERE id = :id`, { id: companyAId });
         await conn.commit();
       });
+      await invalidate(companyAId, 'company');
     }
   });
 });

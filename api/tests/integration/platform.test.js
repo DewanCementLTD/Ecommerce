@@ -279,7 +279,7 @@ describe('company management', () => {
     domainId = addRes.body.domain.id;
 
     await request(app).get('/storefront/company').set('Host', newHost);
-    const cachedBefore = await getRedis().get(`host:${newHost}`);
+    const cachedBefore = await getRedis().get(`sf:host:${newHost}`);
     expect(cachedBefore).toBe(String(companyId));
 
     const deleteRes = await request(app)
@@ -287,7 +287,7 @@ describe('company management', () => {
       .set('Authorization', `Bearer ${platformToken}`);
     expect(deleteRes.status).toBe(204);
 
-    const cachedAfter = await getRedis().get(`host:${newHost}`);
+    const cachedAfter = await getRedis().get(`sf:host:${newHost}`);
     expect(cachedAfter).toBeNull();
 
     const afterDelete = await request(app).get('/storefront/company').set('Host', newHost);

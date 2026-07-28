@@ -5,6 +5,7 @@ import pinoHttp from 'pino-http';
 import { logger } from './lib/logger.js';
 import { reqId } from './middleware/reqId.js';
 import { errorHandler } from './middleware/error.js';
+import { cacheBust } from './middleware/cache.js';
 import { tenantResolver } from './middleware/tenant.js';
 import { storefrontRouter } from './modules/storefront/storefront.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -40,6 +41,9 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
   app.use(pinoHttp({ logger, genReqId: (req) => req.id }));
+  // Registered before the routes so its `finish` listener is attached before
+  // any handler can send a response.
+  app.use(cacheBust);
 
   app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

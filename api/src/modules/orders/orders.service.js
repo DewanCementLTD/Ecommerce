@@ -3,6 +3,7 @@ import { AppError } from '../../middleware/error.js';
 import { camelRow, camelRows } from '../../lib/rows.js';
 import { parseJson, stringifyJson } from '../../lib/json.js';
 import { getRedis } from '../../lib/redis.js';
+import { companyKey } from '../../lib/cache.js';
 import { findCompanyById } from '../tenants/tenants.repo.js';
 import * as repo from './orders.repo.js';
 import * as cartsService from '../carts/carts.service.js';
@@ -74,7 +75,7 @@ export async function getOrder({ companyId, id }) {
 
 export async function checkout({ companyId, company, customerId, cartToken, idempotencyKey, name, phone, email, note, addrId, address, lang }) {
   const redis = getRedis();
-  const idemKey = idempotencyKey ? `checkout:idem:${companyId}:${idempotencyKey}` : null;
+  const idemKey = idempotencyKey ? companyKey(companyId, 'checkout', 'idem', idempotencyKey) : null;
   if (idemKey) {
     const existingOrderId = await redis.get(idemKey);
     if (existingOrderId) return getOrder({ companyId, id: Number(existingOrderId) });

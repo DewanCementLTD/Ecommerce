@@ -39,6 +39,16 @@ export const env = {
       from: process.env.SMTP_FROM ?? 'no-reply@example.com',
     },
   },
+  /**
+   * Where the Next.js storefront answers, so the API can ask it to drop its
+   * fetch cache for a store after a write. Both values unset (the default)
+   * turns tag-based revalidation off entirely and leaves the storefront on its
+   * own 60-second windows — see lib/revalidate.js.
+   */
+  storefront: {
+    url: process.env.STOREFRONT_URL || null,
+    revalidateSecret: process.env.REVALIDATE_SECRET || null,
+  },
   db: {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,

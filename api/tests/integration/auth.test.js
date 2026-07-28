@@ -62,7 +62,7 @@ afterAll(async () => {
   });
 
   const redis = getRedis();
-  await redis.del(`auth:fail:${emailA.toLowerCase()}`, `auth:fail:${emailWrongPw.toLowerCase()}`);
+  await redis.del(`sf:auth:fail:${emailA.toLowerCase()}`, `sf:auth:fail:${emailWrongPw.toLowerCase()}`);
 
   await closeRedis();
   await closePool();

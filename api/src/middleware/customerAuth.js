@@ -1,11 +1,12 @@
 import { verifyAccessToken } from '../lib/jwt.js';
 import { getRedis } from '../lib/redis.js';
+import { platformKey } from '../lib/cache.js';
 import { AppError } from './error.js';
 
 /**
  * Sibling of requireAuth (admins) for the storefront's customer accounts —
  * same JWT contract, a distinct claim (role: 'customer') and Redis blacklist
- * namespace (custauth:*) so a revoked admin session can never be confused
+ * namespace (sf:custauth:*) so a revoked admin session can never be confused
  * with a revoked customer one. Mounted after tenantResolver, so req.companyId
  * is already the host-resolved company; the token's own company_id must match
  * it, or a customer token from company A could otherwise be replayed on B's
@@ -30,7 +31,7 @@ export async function requireCustomerAuth(req, res, next) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Invalid or expired token.');
     }
 
-    const blacklisted = await getRedis().get(`custauth:blacklist:${decoded.jti}`);
+    const blacklisted = await getRedis().get(platformKey('custauth', 'blacklist', decoded.jti));
     if (blacklisted) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Token has been revoked.');
     }
@@ -55,7 +56,7 @@ export async function optionalCustomerAuth(req, res, next) {
   try {
     const decoded = verifyAccessToken(header.slice('Bearer '.length));
     if (decoded.role !== 'customer' || decoded.company_id !== req.companyId) return next();
-    if (await getRedis().get(`custauth:blacklist:${decoded.jti}`)) return next();
+    if (await getRedis().get(platformKey('custauth', 'blacklist', decoded.jti))) return next();
     req.customer = { id: decoded.sub, companyId: decoded.company_id, jti: decoded.jti, exp: decoded.exp };
   } catch {
     // Not a valid customer token — treat the request as a guest.

@@ -2,6 +2,7 @@ import argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import { withPlatform } from '../../db/pool.js';
 import { getRedis } from '../../lib/redis.js';
+import { platformKey } from '../../lib/cache.js';
 import { env } from '../../config/env.js';
 import { parseDurationToSeconds } from '../../lib/duration.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js';
@@ -14,7 +15,7 @@ const FAILED_LOGIN_WINDOW_SECONDS = 15 * 60;
 const REFRESH_TTL_SECONDS = parseDurationToSeconds(env.jwt.refreshTtl);
 
 function failKey(email) {
-  return `auth:fail:${email.toLowerCase()}`;
+  return platformKey('auth', 'fail', email.toLowerCase());
 }
 
 async function isLockedOut(redis, email) {
@@ -75,7 +76,7 @@ export async function login({ email, password, ip }) {
   await clearFailedLogins(redis, email);
 
   const { accessToken, refreshToken, refreshJti } = buildTokens(admin);
-  await redis.set(`auth:refresh:${refreshJti}`, String(admin.ID), 'EX', REFRESH_TTL_SECONDS);
+  await redis.set(platformKey('auth', 'refresh', refreshJti), String(admin.ID), 'EX', REFRESH_TTL_SECONDS);
 
   await withPlatform(async (conn) => {
     await touchLastLogin(conn, admin.ID);
@@ -113,7 +114,7 @@ export async function refresh({ refreshToken }) {
   }
 
   const redis = getRedis();
-  const key = `auth:refresh:${decoded.jti}`;
+  const key = platformKey('auth', 'refresh', decoded.jti);
   const stillValid = await redis.get(key);
   if (!stillValid) {
     throw new AppError(401, 'INVALID_TOKEN', 'Refresh token has already been used or revoked.');
@@ -126,7 +127,7 @@ export async function refresh({ refreshToken }) {
   }
 
   const { accessToken, refreshToken: newRefreshToken, refreshJti } = buildTokens(admin);
-  await redis.set(`auth:refresh:${refreshJti}`, String(admin.ID), 'EX', REFRESH_TTL_SECONDS);
+  await redis.set(platformKey('auth', 'refresh', refreshJti), String(admin.ID), 'EX', REFRESH_TTL_SECONDS);
 
   return { accessToken, refreshToken: newRefreshToken };
 }
@@ -135,7 +136,7 @@ export async function refresh({ refreshToken }) {
 export async function logout({ admin, ip }) {
   const redis = getRedis();
   const ttl = Math.max(admin.exp - Math.floor(Date.now() / 1000), 1);
-  await redis.set(`auth:blacklist:${admin.jti}`, '1', 'EX', ttl);
+  await redis.set(platformKey('auth', 'blacklist', admin.jti), '1', 'EX', ttl);
 
   await withPlatform(async (conn) => {
     await insertLog(conn, {

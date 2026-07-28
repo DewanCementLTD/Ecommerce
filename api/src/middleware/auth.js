@@ -1,5 +1,6 @@
 import { verifyAccessToken } from '../lib/jwt.js';
 import { getRedis } from '../lib/redis.js';
+import { platformKey } from '../lib/cache.js';
 import { AppError } from './error.js';
 
 /**
@@ -22,7 +23,7 @@ export async function requireAuth(req, res, next) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Invalid or expired token.');
     }
 
-    const blacklisted = await getRedis().get(`auth:blacklist:${decoded.jti}`);
+    const blacklisted = await getRedis().get(platformKey('auth', 'blacklist', decoded.jti));
     if (blacklisted) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Token has been revoked.');
     }

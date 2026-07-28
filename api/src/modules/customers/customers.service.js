@@ -2,6 +2,7 @@ import argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import { withCompany } from '../../db/pool.js';
 import { getRedis } from '../../lib/redis.js';
+import { companyKey, platformKey } from '../../lib/cache.js';
 import { env } from '../../config/env.js';
 import { parseDurationToSeconds } from '../../lib/duration.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js';
@@ -15,7 +16,7 @@ const FAILED_LOGIN_WINDOW_SECONDS = 15 * 60;
 const REFRESH_TTL_SECONDS = parseDurationToSeconds(env.jwt.refreshTtl);
 
 function failKey(companyId, email) {
-  return `custauth:fail:${companyId}:${email.toLowerCase()}`;
+  return companyKey(companyId, 'custauth', 'fail', email.toLowerCase());
 }
 
 function toCustomerDto(row) {
@@ -68,7 +69,12 @@ export async function register({ companyId, email, password, name, phone }) {
   });
 
   const { accessToken, refreshToken, refreshJti } = buildTokens({ companyId, customerId });
-  await getRedis().set(`custauth:refresh:${refreshJti}`, String(customerId), 'EX', REFRESH_TTL_SECONDS);
+  await getRedis().set(
+    platformKey('custauth', 'refresh', refreshJti),
+    String(customerId),
+    'EX',
+    REFRESH_TTL_SECONDS,
+  );
 
   const row = await withCompany(companyId, (conn) => repo.findCustomerById(conn, { companyId, id: customerId }));
   return { accessToken, refreshToken, customer: toCustomerDto(row) };
@@ -93,7 +99,7 @@ export async function login({ companyId, email, password }) {
   await redis.del(key);
 
   const { accessToken, refreshToken, refreshJti } = buildTokens({ companyId, customerId: row.ID });
-  await redis.set(`custauth:refresh:${refreshJti}`, String(row.ID), 'EX', REFRESH_TTL_SECONDS);
+  await redis.set(platformKey('custauth', 'refresh', refreshJti), String(row.ID), 'EX', REFRESH_TTL_SECONDS);
 
   return { accessToken, refreshToken, customer: toCustomerDto(row) };
 }
@@ -110,7 +116,7 @@ export async function refresh({ refreshToken }) {
   }
 
   const redis = getRedis();
-  const key = `custauth:refresh:${decoded.jti}`;
+  const key = platformKey('custauth', 'refresh', decoded.jti);
   if (!(await redis.get(key))) {
     throw new AppError(401, 'INVALID_TOKEN', 'Refresh token has already been used or revoked.');
   }
@@ -124,14 +130,19 @@ export async function refresh({ refreshToken }) {
   }
 
   const tokens = buildTokens({ companyId: decoded.company_id, customerId: row.ID });
-  await redis.set(`custauth:refresh:${tokens.refreshJti}`, String(row.ID), 'EX', REFRESH_TTL_SECONDS);
+  await redis.set(
+    platformKey('custauth', 'refresh', tokens.refreshJti),
+    String(row.ID),
+    'EX',
+    REFRESH_TTL_SECONDS,
+  );
   return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
 }
 
 export async function logout({ customer }) {
   const redis = getRedis();
   const ttl = Math.max(customer.exp - Math.floor(Date.now() / 1000), 1);
-  await redis.set(`custauth:blacklist:${customer.jti}`, '1', 'EX', ttl);
+  await redis.set(platformKey('custauth', 'blacklist', customer.jti), '1', 'EX', ttl);
 }
 
 export async function getMe({ companyId, id }) {

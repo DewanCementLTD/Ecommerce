@@ -69,7 +69,7 @@ afterAll(async () => {
     await conn.commit();
   });
 
-  await getRedis().del(`host:${hostA}`, `host:${hostB}`);
+  await getRedis().del(`sf:host:${hostA}`, `sf:host:${hostB}`);
   await closeRedis();
   await closePool();
 });

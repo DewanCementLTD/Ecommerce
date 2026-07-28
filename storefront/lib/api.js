@@ -7,11 +7,18 @@ const API_URL = process.env.API_URL ?? 'http://localhost:8003';
  * only thing that tells the API which store is being asked for. Nothing here
  * ever sends a company id.
  *
- * `revalidate` uses Next's own cache. The Redis layer from
- * 00-SYSTEM-DESIGN.md §7 is Phase 3, Task 2 — this is the framework-level
- * caching that comes with SSR, not a second cache invented early.
+ * Two layers of caching sit under this one call. `revalidate` is Next's own
+ * time-based window, and `tags` is what lets the API cut that window short:
+ * every response is tagged `sf:{host}`, and `app/api/revalidate/route.js`
+ * drops that tag when the API reports a write for that store. The Redis layer
+ * from `00-SYSTEM-DESIGN.md §7` lives on the far side of this call, inside the
+ * API.
+ *
+ * The host is part of the tag and of the request, never of the URL — which is
+ * why two stores asking for `/shop/products` do not share a cache entry: Next
+ * keys the fetch cache on the request headers as well as the URL.
  */
-export async function apiGet(path, { revalidate = 60, searchParams } = {}) {
+export async function apiGet(path, { revalidate = 60, searchParams, tags = [] } = {}) {
   const headersList = await headers();
   const host = headersList.get('x-forwarded-host') || headersList.get('host') || '';
 
@@ -22,7 +29,7 @@ export async function apiGet(path, { revalidate = 60, searchParams } = {}) {
 
   const res = await fetch(url, {
     headers: { 'X-Forwarded-Host': host },
-    next: { revalidate },
+    next: { revalidate, tags: [`sf:${host.split(':')[0].toLowerCase()}`, ...tags] },
   });
 
   if (res.status === 503) return { suspended: true };

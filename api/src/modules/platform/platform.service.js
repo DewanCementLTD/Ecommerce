@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
 import { withPlatform } from '../../db/pool.js';
-import { getRedis } from '../../lib/redis.js';
+import { invalidate, invalidateHost } from '../../lib/cache.js';
 import { generateTempPassword } from '../../lib/password.js';
 import { signAccessToken } from '../../lib/jwt.js';
 import { AppError } from '../../middleware/error.js';
@@ -201,8 +201,8 @@ export async function updateCompany({ id, actorAdminId, ip, ...fields }) {
     themeId: fields.themeId ?? existing.THEME_ID,
   };
 
-  return withPlatform(async (conn) => {
-    const row = await updateCompanyRow(conn, merged);
+  const row = await withPlatform(async (conn) => {
+    const updated = await updateCompanyRow(conn, merged);
     await insertLog(conn, {
       companyId: id,
       adminId: actorAdminId,
@@ -213,8 +213,14 @@ export async function updateCompany({ id, actorAdminId, ip, ...fields }) {
       ip,
     });
     await conn.commit();
-    return row;
+    return updated;
   });
+
+  // The tenant resolver serves this row from Redis on every storefront
+  // request; a rename or a theme change has to be visible immediately, not in
+  // five minutes.
+  await invalidate(id, 'company');
+  return row;
 }
 
 export async function listCompanyDomains({ companyId }) {
@@ -247,6 +253,11 @@ async function changeCompanyStatus({ id, status, actorAdminId, ip }) {
   if (!ok) {
     throw new AppError(404, 'COMPANY_NOT_FOUND', 'Company not found.');
   }
+
+  // Suspension is the one cache entry that must never be stale: a suspended
+  // store still serving from cache is a store we have been asked to take down
+  // and did not.
+  await invalidate(id, 'company');
 }
 
 export const suspendCompany = (args) => changeCompanyStatus({ ...args, status: 'suspended' });
@@ -297,7 +308,7 @@ export async function removeDomain({ domainId, actorAdminId, ip }) {
     await conn.commit();
   });
 
-  await getRedis().del(`host:${domain.HOST}`);
+  await invalidateHost(domain.HOST);
 }
 
 export async function listLogs({ page, pageSize, companyId, action }) {

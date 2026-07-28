@@ -99,8 +99,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await getRedis().del(`host:${hostA}`);
-  await getRedis().del(`host:${hostB}`);
+  await getRedis().del(`sf:host:${hostA}`);
+  await getRedis().del(`sf:host:${hostB}`);
   await withPlatform(async (conn) => {
     await deleteCompanies(conn, [companyAId, companyBId]);
   });

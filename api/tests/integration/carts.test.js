@@ -70,7 +70,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await getRedis().del(`host:${host}`);
+  await getRedis().del(`sf:host:${host}`);
   await withPlatform(async (conn) => {
     await deleteCompanies(conn, [companyId]);
   });

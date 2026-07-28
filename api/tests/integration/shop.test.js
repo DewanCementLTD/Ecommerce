@@ -5,6 +5,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { initPool, closePool, withPlatform } from '../../src/db/pool.js';
 import { closeRedis, getRedis } from '../../src/lib/redis.js';
+import { invalidate } from '../../src/lib/cache.js';
 
 const suffix = Date.now();
 const password = 'correct horse battery staple';
@@ -93,7 +94,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await getRedis().del(`host:${host}`);
+  await getRedis().del(`sf:host:${host}`);
   await withPlatform(async (conn) => {
     for (const sql of [
       'DELETE FROM coll_prods WHERE company_id = :companyId',
@@ -297,7 +298,7 @@ describe('GET /storefront/company', () => {
       expect(res.body.company.primaryHost).toBe(host);
       expect(res.body.company.isPrimaryHost).toBe(false);
     } finally {
-      await getRedis().del(`host:${altHost}`);
+      await getRedis().del(`sf:host:${altHost}`);
     }
   });
 
@@ -318,6 +319,12 @@ describe('suspension', () => {
       await conn.execute(`UPDATE companies SET status = 'suspended' WHERE id = :id`, { id: companyId });
       await conn.commit();
     });
+    // The tenant resolver serves the company row from Redis. Suspending
+    // through the platform service drops that entry itself; this test changes
+    // the row behind the API's back, so it has to do the same thing the
+    // service would. (Anyone editing `companies` by hand in production has the
+    // same obligation — see docs/runbooks/troubleshooting.md.)
+    await invalidate(companyId, 'company');
 
     try {
       for (const path of ['/shop/products', '/shop/cats', `/shop/products/${visible.slug}`]) {
@@ -329,6 +336,7 @@ describe('suspension', () => {
         await conn.execute(`UPDATE companies SET status = 'active' WHERE id = :id`, { id: companyId });
         await conn.commit();
       });
+      await invalidate(companyId, 'company');
     }
   });
 });

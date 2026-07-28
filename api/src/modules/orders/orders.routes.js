@@ -2,9 +2,10 @@ import { Router } from 'express';
 import * as controller from './orders.controller.js';
 import { requireCustomerAuth } from '../../middleware/customerAuth.js';
 import { rateLimit } from '../../middleware/rateLimit.js';
+import { companyKey } from '../../lib/cache.js';
 
 const checkoutRateLimit = rateLimit({
-  keyFn: (req) => `checkout:attempt:${req.companyId}:${req.ip}`,
+  keyFn: (req) => companyKey(req.companyId, 'checkout', 'attempt', req.ip),
   limit: 10,
   windowSeconds: 15 * 60,
 });

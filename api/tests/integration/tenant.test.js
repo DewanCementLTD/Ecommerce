@@ -51,7 +51,7 @@ afterAll(async () => {
   });
 
   const redis = getRedis();
-  await redis.del(`host:${hostA}`, `host:${hostB}`, `host:${hostSuspended}`, `host:${hostUnknown}`);
+  await redis.del(`sf:host:${hostA}`, `sf:host:${hostB}`, `sf:host:${hostSuspended}`, `sf:host:${hostUnknown}`);
 
   await closeRedis();
   await closePool();

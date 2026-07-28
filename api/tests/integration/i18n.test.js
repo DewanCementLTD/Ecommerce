@@ -67,7 +67,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await getRedis().del(`host:${host}`);
+  await getRedis().del(`sf:host:${host}`);
   await withPlatform(async (conn) => {
     await conn.execute('DELETE FROM trans WHERE company_id = :id', { id: companyId });
     await deleteCompanies(conn, [companyId]);
