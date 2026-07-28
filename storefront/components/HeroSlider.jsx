@@ -100,16 +100,22 @@ export function HeroSlider({ banners, settings }) {
         <>
           <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2">
             {banners.map((banner, position) => (
+              // The dot itself is 8px, but a tap target must be at least 24px
+              // square (WCAG 2.5.8). Padding around a visual span gives both.
               <button
                 key={banner.id}
                 type="button"
                 onClick={() => go(position)}
                 aria-label={`Go to slide ${position + 1}`}
                 aria-current={position === index ? 'true' : undefined}
-                className={`h-2 rounded-pill transition-all duration-300 ${
-                  position === index ? 'w-8 bg-white' : 'w-2 bg-white/60 hover:bg-white/90'
-                }`}
-              />
+                className="grid h-6 place-items-center px-1"
+              >
+                <span
+                  className={`block h-2 rounded-pill transition-all duration-300 ${
+                    position === index ? 'w-8 bg-white' : 'w-2 bg-white/70'
+                  }`}
+                />
+              </button>
             ))}
           </div>
 

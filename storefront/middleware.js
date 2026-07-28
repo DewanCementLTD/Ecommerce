@@ -18,14 +18,21 @@ const LANG_SEGMENT = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i;
 export function middleware(request) {
   const { pathname } = request.nextUrl;
   const [, first, ...rest] = pathname.split('/');
+  const headers = new Headers(request.headers);
 
-  if (!first || !LANG_SEGMENT.test(first)) return NextResponse.next();
+  if (!first || !LANG_SEGMENT.test(first)) {
+    // No language prefix. The path still has to be published for the layout:
+    // Next 15 gives a layout no way to read the current pathname, and the
+    // hreflang alternates and language switcher both need it.
+    headers.set('x-sf-path', pathname);
+    return NextResponse.next({ request: { headers } });
+  }
 
   const url = request.nextUrl.clone();
   url.pathname = `/${rest.join('/')}`;
 
-  const headers = new Headers(request.headers);
   headers.set('x-sf-lang', first.toLowerCase());
+  headers.set('x-sf-path', url.pathname);
 
   return NextResponse.rewrite(url, { request: { headers } });
 }

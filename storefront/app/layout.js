@@ -10,13 +10,43 @@ export const dynamic = 'force-dynamic';
 
 /** Per-store metadata: the title and description come from the database. */
 export async function generateMetadata() {
-  const store = await loadStore({ lang: await currentLang() });
+  const lang = await currentLang();
+  const store = await loadStore({ lang });
   if (!store.company) return { title: 'Store' };
 
+  const path = (await currentPath()) || '/';
+
+  /**
+   * hreflang alternates have to be fully qualified — a relative href is not a
+   * valid alternate and search engines ignore it. metadataBase is built from
+   * the request's own host, so each store's tags name that store's domain
+   * rather than anything hardcoded.
+   */
+  const headersList = await headers();
+  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost';
+  const proto = headersList.get('x-forwarded-proto') || 'http';
+  const metadataBase = new URL(`${proto}://${host}`);
+
+  /**
+   * hreflang alternates, so a crawler treats `/products/x` and `/ar/products/x`
+   * as one product in two languages rather than duplicate content. The default
+   * language is canonical at the bare path and also answers x-default.
+   */
+  const languages = {};
+  for (const available of store.langs) {
+    const prefix = langBase(available.code, store.defaultLang);
+    languages[available.code] = `${prefix}${path === '/' ? '' : path}` || '/';
+  }
+  if (store.langs.length > 1) {
+    languages['x-default'] = path;
+  }
+
   return {
+    metadataBase,
     title: { default: store.company.name, template: `%s · ${store.company.name}` },
-    description: store.company.seoDescription ?? undefined,
+    description: store.company.seoDescription ?? `Shop online at ${store.company.name}.`,
     robots: { index: true, follow: true },
+    alternates: { canonical: path, languages },
   };
 }
 
@@ -25,10 +55,10 @@ async function currentLang() {
   return headersList.get('x-sf-lang') ?? null;
 }
 
+/** Published by middleware.js, already stripped of any language prefix. */
 async function currentPath() {
   const headersList = await headers();
-  // Set by Next for every request; used to build the language switcher's links.
-  return headersList.get('x-invoke-path') ?? headersList.get('x-matched-path') ?? '';
+  return headersList.get('x-sf-path') ?? '/';
 }
 
 export default async function RootLayout({ children }) {
@@ -48,7 +78,7 @@ export default async function RootLayout({ children }) {
 
   const { company, tokens, menus, langs, lang, defaultLang, dir } = store;
   const base = langBase(lang, defaultLang);
-  const pathAfterLang = (await currentPath()).replace(/^\/[a-z]{2,3}(-[a-z0-9]{2,8})?(?=\/|$)/i, '');
+  const pathAfterLang = (await currentPath()).replace(/^\/$/, '');
 
   return (
     <html lang={lang} dir={dir} style={tokensToCssVars(tokens)}>

@@ -297,6 +297,8 @@ async function loadPageWithSections({ companyId, page, lang, defaultLang }) {
     defaultLang,
   });
 
+  const sections = await resolveSections({ companyId, sections: withTranslatedSettings });
+
   return {
     page: {
       id: pageTranslated.id,
@@ -308,8 +310,47 @@ async function loadPageWithSections({ companyId, page, lang, defaultLang }) {
       metaDesc: pageTranslated.metaDesc,
       ogImage: pageTranslated.ogImageId ? imageUrl(pageTranslated.ogImageId) : null,
     },
-    sections: await resolveSections({ companyId, sections: withTranslatedSettings }),
+    sections: await translateSectionData({ companyId, sections, lang, defaultLang }),
   };
+}
+
+/**
+ * Translates the rows a section resolved — the products in a row, the
+ * categories in a tile grid.
+ *
+ * Done once across every section rather than per section: a home page with
+ * three product rows issues one translation query for all of them, not three.
+ * Without this the chrome and headings translate while the content underneath
+ * stays in the default language, which is worse than no translation at all.
+ */
+async function translateSectionData({ companyId, sections, lang, defaultLang }) {
+  if (!lang || lang === defaultLang) return sections;
+
+  const productIds = new Set();
+  const catIds = new Set();
+  for (const section of sections) {
+    for (const product of section.data.products ?? []) productIds.add(product.id);
+    for (const cat of section.data.cats ?? []) catIds.add(cat.id);
+  }
+  if (productIds.size === 0 && catIds.size === 0) return sections;
+
+  const [products, cats] = await Promise.all([
+    loadTranslations({ companyId, entity: 'product', entityIds: [...productIds], lang, defaultLang }),
+    loadTranslations({ companyId, entity: 'cat', entityIds: [...catIds], lang, defaultLang }),
+  ]);
+
+  return sections.map((section) => ({
+    ...section,
+    data: {
+      ...section.data,
+      ...(section.data.products
+        ? { products: section.data.products.map((row) => ({ ...row, ...(products.get(row.id) ?? {}) })) }
+        : {}),
+      ...(section.data.cats
+        ? { cats: section.data.cats.map((row) => ({ ...row, ...(cats.get(row.id) ?? {}) })) }
+        : {}),
+    },
+  }));
 }
 
 /** Only the keys the section actually has — a translation cannot add settings. */

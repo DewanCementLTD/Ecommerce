@@ -135,8 +135,10 @@ function LangSwitcher({ langs, currentLang, defaultLang, pathAfterLang }) {
           href={hrefFor(lang.code)}
           hrefLang={lang.code}
           aria-current={lang.code === currentLang ? 'true' : undefined}
-          className={`rounded-sm px-2 py-1 uppercase ${
-            lang.code === currentLang ? 'font-semibold text-accent' : 'text-muted hover:text-ink'
+          className={`grid min-h-6 min-w-6 place-items-center rounded-sm px-2 py-1 uppercase ${
+            lang.code === currentLang
+              ? 'font-semibold text-ink underline underline-offset-4'
+              : 'text-muted hover:text-ink'
           }`}
         >
           {lang.code}

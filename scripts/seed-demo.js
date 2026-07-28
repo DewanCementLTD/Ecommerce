@@ -35,7 +35,10 @@ const THEMES = [
         border: '#ddd8ca',
         primary: '#24401f',
         primaryText: '#f7f5ef',
-        accent: '#a8641c',
+        // 5.8:1 on this theme's off-white background. The lighter ochre it
+        // replaced measured 4.47:1 — just under AA for normal text, which
+        // Lighthouse caught on the language switcher.
+        accent: '#8f5316',
         sale: '#a3301f',
       },
       font: { display: 'bricolage', body: 'publicsans' },
