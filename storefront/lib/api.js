@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:4000';
+const API_URL = process.env.API_URL ?? 'http://localhost:8003';
 
 /**
  * Every storefront fetch forwards the incoming Host, because that header is the

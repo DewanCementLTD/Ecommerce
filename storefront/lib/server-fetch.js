@@ -1,6 +1,6 @@
 import { headers, cookies } from 'next/headers';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:4000';
+const API_URL = process.env.API_URL ?? 'http://localhost:8003';
 
 export const CART_COOKIE = 'cart_token';
 export const ACCESS_COOKIE = 'customer_access_token';

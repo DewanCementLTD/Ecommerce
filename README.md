@@ -20,7 +20,9 @@ npm run seed:demo             # one-time: two demo stores (demo-a.localhost / de
 npm run dev
 ```
 
-`npm run dev` starts the API (`:4000`), the storefront (`:3000`, falls back to the next free port if occupied), and the admin panel (`:5173`) together. Run `npm run dev --workspace=superadmin` separately for the Super Admin panel (`:5174`).
+`npm run dev` starts the API (`:8003`), the storefront (`:3001`), and the admin panel (`:5173`) together. Run `npm run dev --workspace=superadmin` separately for the Super Admin panel (`:5174`).
+
+> **Ports on this host are not free real estate.** This machine also runs unrelated projects — `:3000` in particular belongs to another app. Storeforge owns exactly two of them: **`:8003` (API)** and **`:3001` (storefront)**. The two Vite admin panels are dev-only and never exposed publicly; if you need to look at one in a browser while the storefront is stopped, run it on the storefront's port (`npm run dev --workspace=superadmin -- --port 3001`) rather than claiming a third.
 
 `demo-a.localhost` and `demo-b.localhost` need entries in the hosts file (`C:\Windows\System32\drivers\etc\hosts` on Windows) pointing at `127.0.0.1` — Windows doesn't resolve `*.localhost` automatically. Already done on this machine; `npm run seed:demo` prints each demo admin's one-time login.
 

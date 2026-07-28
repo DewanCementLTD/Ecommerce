@@ -23,3 +23,6 @@ Thumbs.db
 
 # UI check output (screenshots from scripts/ui-check.js)
 .ui-check/
+
+# Claude Code local session settings
+.claude/
