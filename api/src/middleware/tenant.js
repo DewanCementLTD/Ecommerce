@@ -4,7 +4,8 @@ import { cached, platformKey, TTL } from '../lib/cache.js';
 import { findCompanyIdByHost, findCompanyById } from '../modules/tenants/tenants.repo.js';
 import { AppError } from './error.js';
 
-function normalizeHost(rawHost) {
+/** Exported so /auth/login can scope a login to the store it was made on. */
+export function normalizeHost(rawHost) {
   const first = (rawHost ?? '').split(',')[0].trim().toLowerCase();
   const withoutPort = first.split(':')[0];
   return withoutPort.startsWith('www.') ? withoutPort.slice(4) : withoutPort;

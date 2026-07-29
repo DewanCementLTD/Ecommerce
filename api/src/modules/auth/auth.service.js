@@ -8,6 +8,7 @@ import { parseDurationToSeconds } from '../../lib/duration.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib/jwt.js';
 import { AppError } from '../../middleware/error.js';
 import { findAdminByEmail, findAdminById, touchLastLogin } from './auth.repo.js';
+import { findCompanyIdByHost } from '../tenants/tenants.repo.js';
 import { insertLog } from '../logs/logs.repo.js';
 
 const FAILED_LOGIN_LIMIT = 5;
@@ -46,7 +47,38 @@ function buildTokens(admin) {
   };
 }
 
-export async function login({ email, password, ip }) {
+/**
+ * Refuses a login on a store the account does not belong to.
+ *
+ * Now that the client admin is served at `{store-domain}/admin`, the URL
+ * carries a claim about which store you are managing — and without this check
+ * that claim is decorative. A owner of store A could log in at store B's
+ * `/admin` and get their *own* store's data, because the company comes from
+ * the JWT rather than the URL. Not a data leak, but a genuinely confusing one:
+ * the address bar says one shop and the screen shows another.
+ *
+ * Platform admins are exempt. They have no `company_id` and legitimately log
+ * in from the platform's own domain to reach every store.
+ *
+ * A host that belongs to no store is not an error here — the Super Admin panel
+ * and local development both log in on hosts that are not client domains.
+ */
+async function assertAdminBelongsToHost({ admin, host }) {
+  if (!host || admin.ROLE === 'platform') return;
+
+  const companyId = await withPlatform((conn) => findCompanyIdByHost(conn, host));
+  if (!companyId) return;
+
+  if (Number(admin.COMPANY_ID) !== Number(companyId)) {
+    throw new AppError(
+      403,
+      'WRONG_STORE',
+      'That account does not belong to this store. Check the address you are signing in on.',
+    );
+  }
+}
+
+export async function login({ email, password, host, ip }) {
   const redis = getRedis();
 
   if (await isLockedOut(redis, email)) {
@@ -72,6 +104,8 @@ export async function login({ email, password, ip }) {
     });
     throw new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
   }
+
+  await assertAdminBelongsToHost({ admin, host });
 
   await clearFailedLogins(redis, email);
 

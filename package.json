@@ -33,7 +33,8 @@
     "smoke:panels": "node scripts/smoke-panels.js",
     "uptime": "node scripts/uptime-check.js",
     "backup:company": "node scripts/backup-company.js",
-    "restore:company": "node scripts/restore-company.js"
+    "restore:company": "node scripts/restore-company.js",
+    "build": "npm run build --workspace=admin && npm run build --workspace=superadmin && npm run build --workspace=storefront"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

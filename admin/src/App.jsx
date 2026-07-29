@@ -23,8 +23,13 @@ import { OrderDetailPage } from './pages/orders/OrderDetailPage.jsx';
 import { CustomersPage } from './pages/customers/CustomersPage.jsx';
 
 export default function App() {
+  /*
+   * Every route lives under /admin on the store's own domain, so the router has
+   * to know that prefix — without it, a refresh on /admin/products asks the
+   * server for a page that does not exist.
+   */
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <AuthProvider>
         <Routes>

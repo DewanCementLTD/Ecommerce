@@ -1,10 +1,18 @@
 import { loginSchema, refreshSchema } from './auth.schema.js';
 import * as authService from './auth.service.js';
+import { normalizeHost } from '../../middleware/tenant.js';
 
 export async function postLogin(req, res, next) {
   try {
     const body = loginSchema.parse(req.body);
-    const result = await authService.login({ ...body, ip: req.ip });
+    /*
+     * The host the login was attempted on, so the service can refuse an
+     * account that belongs to a different store. Read from the headers rather
+     * than the body — the client does not get to choose which shop it is
+     * signing in to.
+     */
+    const host = normalizeHost(req.headers['x-forwarded-host'] || req.headers.host);
+    const result = await authService.login({ ...body, host, ip: req.ip });
     res.json(result);
   } catch (err) {
     next(err);

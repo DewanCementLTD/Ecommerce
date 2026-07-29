@@ -29,9 +29,75 @@ const nextConfig = {
    * all. Next forwards x-forwarded-host, which is what the resolver reads.
    */
   async rewrites() {
-    return [
-      { source: '/storefront/media/:path*', destination: `${API_URL}/storefront/media/:path*` },
+    /**
+     * The API path prefixes, proxied through the storefront's origin.
+     *
+     * This is what lets the client admin live at `{store-domain}/admin` and
+     * call `/auth/login` and `/products` with no API URL of its own: the
+     * request arrives on the store's domain, carrying the store's Host, and
+     * `tenantResolver` reads it exactly as it does for the storefront. Nginx
+     * does the same thing in production (`deploy/nginx/storeforge.conf`); this
+     * makes it true in local development too, so the two environments do not
+     * disagree about where the API is.
+     *
+     * `beforeFiles` matters: these must win before Next looks for a page or a
+     * static file, or `/products` would be matched by the storefront's own
+     * product route.
+     */
+    const apiPrefixes = [
+      'auth',
+      'platform',
+      'orders',
+      'products',
+      'cats',
+      'colls',
+      'pages',
+      'sections',
+      'banners',
+      'menus',
+      'menu-items',
+      'langs',
+      'trans',
+      'settings',
+      'admins',
+      'roles',
+      'customers',
+      'dashboard',
+      'media',
     ];
+
+    return {
+      beforeFiles: [
+        /*
+         * Only for requests the *admin panel* makes. The storefront has its own
+         * `/products/[slug]` and `/pages/[slug]` routes on the same origin, and
+         * proxying those to the API would replace every product page with JSON.
+         * The panel is a fetch() client and always sends this header; a browser
+         * navigating to a product page never does.
+         */
+        ...apiPrefixes.map((prefix) => ({
+          source: `/${prefix}/:path*`,
+          has: [{ type: 'header', key: 'x-storeforge-api', value: '1' }],
+          destination: `${API_URL}/${prefix}/:path*`,
+        })),
+        ...apiPrefixes.map((prefix) => ({
+          source: `/${prefix}`,
+          has: [{ type: 'header', key: 'x-storeforge-api', value: '1' }],
+          destination: `${API_URL}/${prefix}`,
+        })),
+        { source: '/storefront/media/:path*', destination: `${API_URL}/storefront/media/:path*` },
+        { source: '/storefront/:path*', destination: `${API_URL}/storefront/:path*` },
+      ],
+      afterFiles: [
+        /*
+         * The admin is a single-page app: every one of its routes has to serve
+         * the same index.html and let the client router take over. `afterFiles`
+         * runs only when no real file matched, so the built JS and CSS under
+         * /admin/assets/ are still served normally.
+         */
+        { source: '/admin/:path*', destination: '/admin/index.html' },
+      ],
+    };
   },
 
   /**
@@ -69,7 +135,16 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data:",
+              /*
+               * `blob:` is for the admin panel, which is served from this same
+               * origin at /admin. Its thumbnails come from an authenticated
+               * endpoint that an `<img src>` cannot reach, so it fetches each
+               * file with a bearer token and renders the result through an
+               * object URL (admin/src/components/AuthedImage.jsx). A blob URL
+               * can only be minted by same-origin script, so this admits
+               * nothing an attacker could point at a remote host.
+               */
+              "img-src 'self' data: blob:",
               "font-src 'self' data:",
               "connect-src 'self'",
               "form-action 'self'",

@@ -19,7 +19,11 @@ export function AuthedImage({ src, alt, className, fallback = null }) {
     let url = null;
     setFailed(false);
 
-    fetch(src, { headers: { Authorization: `Bearer ${token}` } })
+    // `X-Storeforge-Api` as well as the token: this is the one place that
+    // calls fetch() directly instead of going through lib/api.js, and without
+    // that header the same-origin proxy treats `/media/…` as a storefront path
+    // and never reaches the API. Every thumbnail in the media library 404'd.
+    fetch(src, { headers: { Authorization: `Bearer ${token}`, 'X-Storeforge-Api': '1' } })
       .then((res) => {
         if (!res.ok) throw new Error('image fetch failed');
         return res.blob();

@@ -12,6 +12,10 @@ export default [
       '**/build/**',
       '**/.next/**',
       '**/coverage/**',
+      // The client admin builds into the storefront's public/ so it can be
+      // served at {store-domain}/admin. That is minified vendor output, not
+      // source — linting it reports a hundred problems in React's own code.
+      'storefront/public/admin/**',
     ],
   },
   js.configs.recommended,

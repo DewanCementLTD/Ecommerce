@@ -58,13 +58,20 @@ async function run() {
       }
     });
 
-    await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle2', timeout: 45000 });
+    /*
+     * `domcontentloaded`, not `networkidle2`. A panel that polls — the Super
+     * Admin dashboard refreshes every 60s — never reaches network idle, and
+     * the walk below timed out on a page that had rendered perfectly well.
+     * The explicit settle after each navigation is what waits for the SPA.
+     */
+    await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForSelector('input[type="email"]', { timeout: 20000 });
 
     await page.type('input[type="email"]', email);
     await page.type('input[type="password"]', password);
     await Promise.all([
       page.click('button[type="submit"]'),
-      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {
         // An SPA login is a client-side route change, not a navigation.
       }),
     ]);
@@ -78,8 +85,8 @@ async function run() {
 
     for (const route of routes) {
       problems.length = 0;
-      await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle2', timeout: 45000 });
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+      await page.goto(`${baseUrl}${route}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await new Promise((resolve) => setTimeout(resolve, 2500));
 
       const summary = await page.evaluate(() => ({
         heading: document.querySelector('h1')?.textContent?.trim() ?? null,

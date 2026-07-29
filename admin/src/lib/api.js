@@ -1,4 +1,16 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8003';
+/**
+ * Empty by default: the API is same-origin.
+ *
+ * The panel is served from the store's own domain, and both Nginx (production)
+ * and the Next.js storefront (development) proxy the API path prefixes to the
+ * API process. So `/auth/login` from this SPA reaches the API on the store's
+ * domain, carrying that store's Host — which is exactly how the tenant is
+ * resolved everywhere else.
+ *
+ * `VITE_API_URL` still overrides it, for running the panel on its own Vite
+ * port during development.
+ */
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 export class ApiError extends Error {
   constructor(status, code, message) {
@@ -13,6 +25,20 @@ async function request(path, { method = 'GET', token, body, isForm = false } = {
     method,
     headers: {
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      /*
+       * Marks this as an API call rather than a page navigation.
+       *
+       * The panel is served from the same origin as the storefront, and the two
+       * share path prefixes — `/products` is a shop page for a visitor and an
+       * API endpoint for this SPA. The proxy in `storefront/next.config.js`
+       * keys on this header to tell them apart, so a shopper browsing to
+       * /products never gets JSON back.
+       *
+       * Inside the object rather than spread after `isForm`, so uploads carry
+       * it too: media upload is the one request that must not set
+       * Content-Type, and it still has to reach the API.
+       */
+      'X-Storeforge-Api': '1',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),

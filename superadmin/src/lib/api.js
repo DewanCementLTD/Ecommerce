@@ -13,6 +13,8 @@ async function request(path, { method = 'GET', token, body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
+      // Same marker the client admin sends — see admin/src/lib/api.js.
+      'X-Storeforge-Api': '1',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
