@@ -42,8 +42,21 @@ npm run dev
 | `npm run seed:demo` | One-time (idempotent) two demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` |
 | `npm run seed:demo-catalog` | Fills the demo stores with categories, products, banners and wired-up home sections (images generated locally, no network) |
 | `npm run backfill:order-seq` | One-time (idempotent) — seeds the per-company order-number counter for any company provisioned before `007_commerce.sql` |
-| `npm run carts:cleanup` | Deletes expired (30-day) carts across every company. No scheduler wired up yet — see `docs/BACKLOG.md` |
-| `npm run ui:check <url>...` | Screenshots pages at 375px and 1440px and fails on horizontal overflow, missing alt text, unnamed buttons, broken images or a missing `h1` |
+| `npm run carts:cleanup` | Deletes expired (30-day) carts across every company. Scheduled nightly by PM2 (`ecosystem.config.cjs`) in production |
+| `npm run ui:check <url>...` | Screenshots pages at 375px and 1440px and fails on horizontal overflow, missing alt text, unnamed buttons, broken images, a missing `h1`, browser console errors, or a missing meta description / canonical in `<head>` |
+| `npm run smoke:panels <baseUrl> <email> <password> [path...]` | Logs into an admin panel and walks its screens, reporting anything the browser complained about |
+| `npm run backfill:avif` | One-time (idempotent) — generates the AVIF sibling of every WebP variant uploaded before Phase 3 |
+| `npm run seed:loadtest` | A store with realistic volume (10k products, 2k orders) plus filler tenants, so `EXPLAIN PLAN` and load tests mean something. `--drop` removes it all |
+| `npm run explain [companyId]` | `EXPLAIN PLAN` over the fifteen hottest queries — captured from the repositories, not copied — failing on any full scan of `products`, `orders` or `variants` |
+| `npm run loadtest [-- --api]` | autocannon against home/category/product (or the API endpoints behind them) |
+| `npm run uptime <url>...` | Probes each URL; exits non-zero if any is down. Meant for a scheduler |
+| `npm run backup:company -- --company <id>` | Exports every row one company owns to a JSON file |
+| `npm run restore:company -- --file <export>` | Restores that export into a new, suspended company |
+
+Production process management is `ecosystem.config.cjs` (PM2) and
+`deploy/nginx/`. Operational procedures live in [docs/runbooks/](docs/runbooks/) —
+start with [onboard-company.md](docs/runbooks/onboard-company.md), and
+[incident.md](docs/runbooks/incident.md) when something is wrong.
 
 Storefront performance claims must be measured against a production build
 (`next build && next start`), never the dev server: `node scripts/lighthouse.js <url>`.
@@ -67,7 +80,7 @@ manual pre-release step; wiring it into CI as a blocking check is tracked in
 
 ## Layout
 
-See `CLAUDE.md` for the full repository layout and module shape. In short: `api/` is the only thing that talks to Oracle, `storefront/` is the public Next.js site, `admin/` and `superadmin/` are Vite + React SPAs.
+See `CLAUDE.md` for the full repository layout and module shape. In short: `api/` is the only thing that talks to Oracle, `storefront/` is the public Next.js site, `admin/` and `superadmin/` are Vite + React SPAs, `deploy/` holds the Nginx configuration and `docs/runbooks/` holds the procedures for running it.
 
 ## Notes for this environment
 
