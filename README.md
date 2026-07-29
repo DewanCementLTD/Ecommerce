@@ -24,7 +24,9 @@ npm run dev
 
 > **Ports on this host are not free real estate.** This machine also runs unrelated projects — `:3000` in particular belongs to another app. Storeforge owns exactly two of them: **`:8003` (API)** and **`:3001` (storefront)**. The two Vite admin panels are dev-only and never exposed publicly; if you need to look at one in a browser while the storefront is stopped, run it on the storefront's port (`npm run dev --workspace=superadmin -- --port 3001`) rather than claiming a third.
 
-`demo-a.localhost` and `demo-b.localhost` need entries in the hosts file (`C:\Windows\System32\drivers\etc\hosts` on Windows) pointing at `127.0.0.1` — Windows doesn't resolve `*.localhost` automatically. Already done on this machine; `npm run seed:demo` prints each demo admin's one-time login.
+The client admin for a store is served at **`{store-domain}/admin`** — e.g. `http://demo-a.localhost:3001/admin` — not on a port of its own. It builds into `storefront/public/admin/`, so `npm run build` must build the admin before the storefront (the root `build` script does). The Super Admin panel stays separate: it is platform-level and belongs on the platform's domain, not on any client's.
+
+`demo-a.localhost`, `demo-b.localhost` and `demo-c.localhost` need entries in the hosts file (`C:\Windows\System32\drivers\etc\hosts` on Windows) pointing at `127.0.0.1` — Windows doesn't resolve `*.localhost` automatically. Already done on this machine; `npm run seed:demo` prints each demo admin's one-time login.
 
 ## Scripts (root)
 
@@ -39,7 +41,7 @@ npm run dev
 | `npm run migrate:dry` | Lists pending migrations without applying them |
 | `npm run setup:platform-user` | One-time (idempotent) bootstrap of the `ecomm_platform` VPD-exempt DB user + its table synonyms |
 | `npm run seed:platform-admin` | One-time (idempotent) bootstrap of the first Super Admin login (`PLATFORM_ADMIN_EMAIL`/`PLATFORM_ADMIN_PASSWORD`) |
-| `npm run seed:demo` | One-time (idempotent) two demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` |
+| `npm run seed:demo` | One-time (idempotent) three demo stores + themes, for `demo-a.localhost` / `demo-b.localhost` / `demo-c.localhost` |
 | `npm run seed:demo-catalog` | Fills the demo stores with categories, products, banners and wired-up home sections (images generated locally, no network) |
 | `npm run backfill:order-seq` | One-time (idempotent) — seeds the per-company order-number counter for any company provisioned before `007_commerce.sql` |
 | `npm run carts:cleanup` | Deletes expired (30-day) carts across every company. Scheduled nightly by PM2 (`ecosystem.config.cjs`) in production |

@@ -271,7 +271,7 @@ async function run() {
     const result = await conn.execute(
       `SELECT c.id, c.name FROM companies c
         JOIN domains d ON d.company_id = c.id
-       WHERE d.host IN ('demo-a.localhost', 'demo-b.localhost')`,
+       WHERE d.host IN ('demo-a.localhost', 'demo-b.localhost', 'demo-c.localhost')`,
     );
     return result.rows;
   });

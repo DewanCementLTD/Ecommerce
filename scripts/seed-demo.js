@@ -66,6 +66,41 @@ const THEMES = [
       layout: { header: 'centered', footer: 'compact' },
     },
   },
+  {
+    /**
+     * A butcher/grocer retail look — the reference quality bar CLAUDE.md names.
+     *
+     * The palette is original: warm off-white paper, near-black charcoal for
+     * the header and buttons, and a deep butcher red as the accent. Contrast
+     * was chosen to pass, not to look approximately right — the accent
+     * measures ~7:1 on the background and the muted text ~5:1, because Phase 1
+     * lost an afternoon to an ochre that sat at 4.47:1 and failed AA by a
+     * hair.
+     *
+     * Nothing here is copied from any particular shop's branding. A client
+     * with their own photography and logo drops them in and the theme carries
+     * them; that is the whole point of tokens being data.
+     */
+    code: 'butcher',
+    name: 'Butcher Block (bold retail)',
+    tokens: {
+      color: {
+        bg: '#fdfbf7',
+        surface: '#f4efe6',
+        text: '#17140f',
+        muted: '#665c4e',
+        border: '#e4dccd',
+        primary: '#1a1614',
+        primaryText: '#fbf7f0',
+        accent: '#9c1c1c',
+        sale: '#b3261e',
+      },
+      font: { display: 'bricolage', body: 'publicsans' },
+      // Squarer than Harbour: a butcher's shop is not a fintech.
+      radius: { sm: '3px', md: '6px', lg: '10px', pill: '999px' },
+      layout: { header: 'classic', footer: 'columns' },
+    },
+  },
 ];
 
 const DEMOS = [
@@ -82,6 +117,13 @@ const DEMOS = [
     themeCode: 'harbour',
     adminEmail: 'admin@demo-b.localhost',
     currency: 'AED',
+  },
+  {
+    name: 'Demo Store C',
+    domainHost: 'demo-c.localhost',
+    themeCode: 'butcher',
+    adminEmail: 'admin@demo-c.localhost',
+    currency: 'BDT',
   },
 ];
 
