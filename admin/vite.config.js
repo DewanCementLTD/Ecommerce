@@ -23,5 +23,34 @@ export default defineConfig({
     outDir: '../storefront/public/admin',
     emptyOutDir: true,
   },
-  server: { port: 5173 },
+  /**
+   * The dev server proxies the API too.
+   *
+   * The panel now calls the API same-origin, because in production it is
+   * served by the storefront which proxies these prefixes. Running Vite on its
+   * own port without the same proxy left every request going to Vite, which
+   * answers with the SPA's index.html or nothing at all — uploads failed with
+   * a bare "fetch failed" and gave no clue why.
+   *
+   * The list matches `storefront/next.config.js` and the `location` blocks in
+   * `deploy/nginx/storeforge.conf`. Three copies of one list is two too many;
+   * it is worth collapsing into a shared constant the next time it changes.
+   */
+  server: {
+    port: 5173,
+    proxy: Object.fromEntries(
+      [
+        'auth', 'platform', 'orders', 'products', 'cats', 'colls', 'pages',
+        'sections', 'banners', 'menus', 'menu-items', 'langs', 'trans',
+        'settings', 'admins', 'roles', 'customers', 'dashboard', 'media',
+        'storefront',
+      ].map((prefix) => [
+        `/${prefix}`,
+        {
+          target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8003',
+          changeOrigin: false,
+        },
+      ]),
+    ),
+  },
 });

@@ -210,3 +210,27 @@ written into the phase report.
 
 Rate limiting is disabled under `NODE_ENV=test`. If you are seeing 429s,
 `NODE_ENV` is not `test` — check how the suite is being invoked.
+
+### Uploads fail with a bare "fetch failed", or admin images do not load
+
+The panel calls the API **same-origin**: it is normally served by the
+storefront at `{store-domain}/admin`, and the storefront proxies the API path
+prefixes. Running the panel on its own Vite port only works because
+`admin/vite.config.js` proxies the same prefixes — if that proxy is missing or
+its list has drifted, every API call goes to Vite instead, which answers with
+the SPA's own index.html and no useful error.
+
+The tell is that a `GET` looks like it "works" (Vite returns 200 and HTML)
+while an upload dies with a bare `fetch failed`. Check where a request actually
+landed:
+
+```bash
+curl -si http://localhost:3001/media | head -3
+```
+
+An API response carries `x-request-id` and the API's `content-security-policy`.
+An HTML page from Vite carries neither.
+
+The prefix list exists in three places — `admin/vite.config.js`,
+`storefront/next.config.js` and `deploy/nginx/storeforge.conf`. All three must
+agree; adding an API route means adding it to all three.
