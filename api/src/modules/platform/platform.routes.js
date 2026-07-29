@@ -14,11 +14,13 @@ import {
   getLogs,
   getOverview,
   getCompanyHealth,
+  getThemes,
 } from './platform.controller.js';
 
 export const platformRouter = Router();
 
 platformRouter.get('/overview', getOverview);
+platformRouter.get('/themes', getThemes);
 platformRouter.get('/logs', getLogs);
 platformRouter.post('/companies', postCompany);
 platformRouter.get('/companies', getCompanies);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -12,6 +12,7 @@ const emptyForm = {
   adminName: '',
   currency: '',
   timezone: '',
+  themeId: '',
 };
 
 export function CompanyCreatePage() {
@@ -21,6 +22,21 @@ export function CompanyCreatePage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState(null);
+  const [themes, setThemes] = useState([]);
+
+  /*
+   * Added after the Phase 3 pilot. The onboarding runbook tells you to agree a
+   * theme with the client, and there was nowhere to enter it — a store created
+   * from this form got `theme_id = null` and rendered in the fallback palette
+   * until a developer ran an UPDATE. That is exactly the kind of step the
+   * pilot exists to catch.
+   */
+  useEffect(() => {
+    api
+      .listThemes(token)
+      .then((res) => setThemes(res.themes))
+      .catch(() => setThemes([]));
+  }, [token]);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -32,6 +48,7 @@ export function CompanyCreatePage() {
     setSubmitting(true);
     try {
       const body = Object.fromEntries(Object.entries(form).filter(([, v]) => v !== ''));
+      if (body.themeId) body.themeId = Number(body.themeId);
       const res = await api.createCompany(token, body);
       setCreated(res);
     } catch (err) {
@@ -104,6 +121,25 @@ export function CompanyCreatePage() {
         <div className="grid grid-cols-2 gap-4">
           <Field id="currency" label="Currency" value={form.currency} onChange={update('currency')} placeholder="USD" />
           <Field id="timezone" label="Timezone" value={form.timezone} onChange={update('timezone')} placeholder="UTC" />
+        </div>
+
+        <div>
+          <label htmlFor="themeId" className="block text-sm font-medium text-gray-700">
+            Theme
+          </label>
+          <select
+            id="themeId"
+            value={form.themeId}
+            onChange={update('themeId')}
+            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <option value="">Default palette</option>
+            {themes.map((theme) => (
+              <option key={theme.id} value={theme.id}>
+                {theme.name}
+              </option>
+            ))}
+          </select>
         </div>
         <hr className="border-gray-200" />
         <Field

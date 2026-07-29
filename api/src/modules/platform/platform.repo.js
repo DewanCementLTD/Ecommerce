@@ -285,3 +285,15 @@ export async function companyHealth(conn, companyId) {
   );
   return result.rows[0] ?? null;
 }
+
+/**
+ * The themes a new store can be given. Platform-level, tiny, and read-only
+ * from the panel's point of view — themes ship with the product rather than
+ * being created per client.
+ */
+export async function listThemes(conn) {
+  const result = await conn.execute(
+    'SELECT id, code, name FROM themes WHERE is_active = 1 ORDER BY name',
+  );
+  return result.rows;
+}

@@ -49,6 +49,7 @@ export const api = {
   listLogs: (token, params) => request(`/platform/logs?${new URLSearchParams(params)}`, { token }),
 
   getOverview: (token) => request('/platform/overview', { token }),
+  listThemes: (token) => request('/platform/themes', { token }),
   getCompanyHealth: (token, id, withSsl = false) =>
     request(`/platform/companies/${id}/health${withSsl ? '?ssl=1' : ''}`, { token }),
 };

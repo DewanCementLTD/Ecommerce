@@ -115,16 +115,31 @@ describe('staff', () => {
   });
 
   it('refuses to deactivate the last active admin', async () => {
-    const res = await auth(request(app).patch(`/admins/${ownerId}`)).send({ isActive: false });
-    // Two active admins exist at this point (owner + staff), so this should succeed...
-    expect(res.status).toBe(200);
-    // ...but deactivating the last remaining active one must be refused.
-    const last = await auth(request(app).patch(`/admins/${staffId}`)).send({ isActive: false });
+    /*
+     * The staff account is deactivated first, not the owner's.
+     *
+     * Deactivating an account revokes every token it holds
+     * (api/src/lib/sessions.js) — so a version of this test that switched the
+     * owner off to reach the guard was killing the very bearer token it was
+     * using, and every assertion after that line came back 401. Re-logging in
+     * afterwards does not help either: the account is inactive by then, and a
+     * revocation is a point in time rather than a flag that re-activating
+     * clears.
+     *
+     * Driving it the other way round tests the same guard and leaves this
+     * suite's session alone.
+     */
+    const staffOff = await auth(request(app).patch(`/admins/${staffId}`)).send({ isActive: false });
+    expect(staffOff.status).toBe(200);
+
+    // The owner is now the only active admin, so switching them off must fail.
+    const last = await auth(request(app).patch(`/admins/${ownerId}`)).send({ isActive: false });
     expect(last.status).toBe(409);
     expect(last.body.error.code).toBe('LAST_ADMIN');
 
-    // Restore the owner so the remaining tests (and cleanup) keep working.
-    await auth(request(app).patch(`/admins/${ownerId}`)).send({ isActive: true });
+    // Restore the staff member so the remaining tests (and cleanup) keep working.
+    const restored = await auth(request(app).patch(`/admins/${staffId}`)).send({ isActive: true });
+    expect(restored.status).toBe(200);
   });
 
   it('refuses to let an admin delete themselves', async () => {

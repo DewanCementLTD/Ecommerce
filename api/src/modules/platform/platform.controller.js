@@ -159,3 +159,11 @@ export async function getCompanyHealth(req, res, next) {
     next(err);
   }
 }
+
+export async function getThemes(req, res, next) {
+  try {
+    res.json(await platformService.listThemes());
+  } catch (err) {
+    next(err);
+  }
+}

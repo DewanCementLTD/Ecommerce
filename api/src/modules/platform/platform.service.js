@@ -35,6 +35,7 @@ import {
   ordersPerCompany,
   storagePerCompany,
   companyHealth,
+  listThemes as listThemeRows,
 } from './platform.repo.js';
 
 /** Step 6: every store starts with these four pages. */
@@ -451,4 +452,9 @@ export async function companyHealthCard({ companyId, includeSsl = false }) {
     domains: domainRows,
     ssl,
   };
+}
+
+export async function listThemes() {
+  const rows = await withPlatform((conn) => listThemeRows(conn));
+  return { themes: rows.map((row) => ({ id: row.ID, code: row.CODE, name: row.NAME })) };
 }
