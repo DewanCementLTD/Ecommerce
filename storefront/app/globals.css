@@ -30,6 +30,16 @@
   font-style: normal;
 }
 
+/* An elegant serif for the fashion/jewelry themes — everything else here is
+   sans-serif, and a boutique or luxury store reads wrong in Manrope. */
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('/fonts/playfair.woff2') format('woff2-variations');
+  font-weight: 400 900;
+  font-display: swap;
+  font-style: normal;
+}
+
 /* Arabic face, so an RTL store is legible rather than falling back to a default. */
 @font-face {
   font-family: 'Cairo';

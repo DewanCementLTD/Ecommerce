@@ -28,3 +28,4 @@ Thumbs.db
 .claude/
 backups/
 storefront/public/admin/
+scripts/seed-assets/

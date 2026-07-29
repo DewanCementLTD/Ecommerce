@@ -101,6 +101,86 @@ const THEMES = [
       layout: { header: 'classic', footer: 'columns' },
     },
   },
+  {
+    /**
+     * Boutique / fashion — soft blush paper, near-black ink, a warm terracotta
+     * accent. The serif display face (Playfair Display) is what separates it
+     * from every other theme here, which are all sans-serif; a clothing
+     * boutique reading in the same face as a hardware store is the tell that
+     * a platform has only one look.
+     */
+    code: 'boutique',
+    name: 'Boutique (fashion & lifestyle)',
+    tokens: {
+      color: {
+        bg: '#fdf8f6',
+        surface: '#f6ebe6',
+        text: '#241c1a',
+        muted: '#7a6a64',
+        border: '#e9dad2',
+        primary: '#241c1a',
+        primaryText: '#fdf8f6',
+        accent: '#b5563c',
+        sale: '#a3301f',
+      },
+      font: { display: 'playfair', body: 'publicsans' },
+      radius: { sm: '2px', md: '4px', lg: '8px', pill: '999px' },
+      layout: { header: 'centered', footer: 'columns' },
+    },
+  },
+  {
+    /**
+     * Electronics / tech — near-black canvas, cool grey surfaces, an electric
+     * blue accent. The one dark-mode-leaning theme in the set: `bg` itself is
+     * dark, not just the header, which is why the accent had to be checked
+     * against it rather than against a light card.
+     */
+    code: 'circuit',
+    name: 'Circuit (electronics & tech)',
+    tokens: {
+      color: {
+        bg: '#0b0e14',
+        surface: '#141924',
+        text: '#e8ecf4',
+        muted: '#8b93a7',
+        border: '#232b3a',
+        primary: '#2563eb',
+        primaryText: '#f5f8ff',
+        // ~8.9:1 against the dark bg — checked directly, not eyeballed, per
+        // the same rule the Cleaver theme's comment already states.
+        accent: '#38bdf8',
+        sale: '#f43f5e',
+      },
+      font: { display: 'manrope', body: 'manrope' },
+      radius: { sm: '6px', md: '12px', lg: '20px', pill: '999px' },
+      layout: { header: 'classic', footer: 'compact' },
+    },
+  },
+  {
+    /**
+     * Grocery / organic — fresh sage green on warm cream, an amber accent for
+     * offers. Rounder corners than Butcher Block on purpose: a butcher is
+     * blunt, a greengrocer is soft.
+     */
+    code: 'harvest',
+    name: 'Harvest (grocery & organic)',
+    tokens: {
+      color: {
+        bg: '#fbfaf4',
+        surface: '#eef2e4',
+        text: '#1f2917',
+        muted: '#5c6b4f',
+        border: '#dde5cc',
+        primary: '#3f6b2e',
+        primaryText: '#f6faf0',
+        accent: '#c17a1f',
+        sale: '#b3401f',
+      },
+      font: { display: 'bricolage', body: 'publicsans' },
+      radius: { sm: '8px', md: '16px', lg: '26px', pill: '999px' },
+      layout: { header: 'centered', footer: 'columns' },
+    },
+  },
 ];
 
 const DEMOS = [

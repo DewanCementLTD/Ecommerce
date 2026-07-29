@@ -282,3 +282,19 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** A third theme, `butcher` ("Butcher Block"), with an original palette and type pairing, plus a third demo store on `demo-c.localhost` to show it.
 **Why:** `CLAUDE.md` names a reference storefront as the quality bar. The *structure* it describes — banner slider, category tiles, product rows, newsletter, footer — was already what the section registry produces, so what was missing was a theme in that register rather than any new layout code. The palette is chosen for contrast first: the accent measures ~7:1 on the background, because Phase 1 shipped an ochre at 4.47:1 that failed AA by a hair and had to be redone.
 **Alternatives considered:** Reproducing a specific existing shop's design and assets (rejected — their photography, logo and copy are that business's property, and this theme ships to every client onboarded onto the platform, which would make one company's product shots part of the product sold to their competitors). Tokens are data precisely so a client's own licensed photography drops in and the theme carries it.
+
+---
+
+**Date:** 2026-07-29
+**Phase / Task:** post-phase-3
+**Decision:** Four new predefined themes — `boutique` (fashion, Playfair Display serif), `circuit` (electronics, dark canvas), `harvest` (grocery, sage green), plus the existing `butcher` — each seedable with real photography via `scripts/seed-themed-store.js`, which downloads-once/uploads-through-the-real-media-pipeline rather than generating gradients.
+**Why:** The user asked for popular, ready-to-use themes with real images rather than placeholder gradients, to preview what a client's store could actually look like. Images are Unsplash-licensed (free to use, no attribution required) and are not committed to the repo or fetched at runtime — they live in `scripts/seed-assets/` (gitignored) and are only touched by the seed script, so removing that folder costs nothing but pictures on the four demo stores it seeded.
+**Alternatives considered:** Fetching images from Unsplash at request time (rejected — the whole point of self-hosted media is that a store's first paint never depends on a third party being up); using Unsplash's API with a key (rejected — the CDN's direct photo URLs serve the same licensed images with no key and no rate limit for this one-time seed use).
+
+---
+
+**Date:** 2026-07-29
+**Phase / Task:** post-phase-3
+**Decision:** `admin/vite.config.js` and `superadmin`'s dev server both proxy the API's path prefixes now, matching `storefront/next.config.js` and `deploy/nginx/storeforge.conf`.
+**Why:** Moving the client admin to `{store-domain}/admin` made its API calls same-origin — correct when the storefront serves it and proxies those prefixes, but the standalone Vite dev server had no such proxy. Every API call silently went to Vite instead, which answered with the SPA's own `index.html`. Reads looked like they half-worked (Vite returns 200 HTML); uploads died with a bare `fetch failed`. Found by reproducing the user's exact report end to end rather than guessing from the symptom.
+**Alternatives considered:** none — the prefix list already existed in two other places, and it was missing from exactly the one place a bare `vite --port 3001` invocation goes through. The list now needs to agree in three places; that duplication is itself now called out for cleanup in `docs/troubleshooting.md`.

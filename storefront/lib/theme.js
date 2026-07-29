@@ -17,6 +17,7 @@ export const FONT_STACKS = {
   bricolage: "'Bricolage Grotesque', 'Cairo', system-ui, sans-serif",
   publicsans: "'Public Sans', 'Cairo', system-ui, sans-serif",
   manrope: "'Manrope', 'Cairo', system-ui, sans-serif",
+  playfair: "'Playfair Display', 'Cairo', Georgia, serif",
 };
 
 /**
