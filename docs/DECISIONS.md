@@ -298,3 +298,11 @@ Non-obvious choices that deviate from or clarify the phase briefs, in date order
 **Decision:** `admin/vite.config.js` and `superadmin`'s dev server both proxy the API's path prefixes now, matching `storefront/next.config.js` and `deploy/nginx/storeforge.conf`.
 **Why:** Moving the client admin to `{store-domain}/admin` made its API calls same-origin — correct when the storefront serves it and proxies those prefixes, but the standalone Vite dev server had no such proxy. Every API call silently went to Vite instead, which answered with the SPA's own `index.html`. Reads looked like they half-worked (Vite returns 200 HTML); uploads died with a bare `fetch failed`. Found by reproducing the user's exact report end to end rather than guessing from the symptom.
 **Alternatives considered:** none — the prefix list already existed in two other places, and it was missing from exactly the one place a bare `vite --port 3001` invocation goes through. The list now needs to agree in three places; that duplication is itself now called out for cleanup in `docs/troubleshooting.md`.
+
+---
+
+**Date:** 2026-07-30
+**Phase / Task:** phase-3, ports
+**Decision:** The storefront now runs on `:4000` instead of `:3001` (`storefront/package.json`, `.env`/`.env.example` `STOREFRONT_URL`, `ecosystem.config.cjs`, `deploy/nginx/storeforge.conf`, `storefront/lib/seo.js`, docs and scripts that reference it by number).
+**Why:** Requested directly — `:3001` on this host was also wanted free for another purpose.
+**Alternatives considered:** none — this is a straight port reassignment, not a design change.

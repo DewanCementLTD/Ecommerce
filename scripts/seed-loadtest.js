@@ -480,7 +480,7 @@ async function run() {
   if (filler > 0) await seedFillerTenants(filler, 4000);
 
   await gatherStats(companyId);
-  console.log(`\nload-test store ready: http://${HOST}:3001  (company ${companyId})`);
+  console.log(`\nload-test store ready: http://${HOST}:4000  (company ${companyId})`);
 }
 
 run()

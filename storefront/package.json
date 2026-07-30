@@ -4,9 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 4000",
     "build": "next build",
-    "start": "next start -p 3001"
+    "start": "next start -p 4000"
   },
   "dependencies": {
     "@storeforge/shared": "*",

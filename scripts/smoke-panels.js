@@ -15,7 +15,7 @@ import puppeteer from 'puppeteer-core';
  *   node scripts/smoke-panels.js <baseUrl> <email> <password> [path ...]
  *
  * Example:
- *   node scripts/smoke-panels.js http://localhost:3001 super@x.test 'pw' \
+ *   node scripts/smoke-panels.js http://localhost:4000 super@x.test 'pw' \
  *     /dashboard /companies /logs
  */
 

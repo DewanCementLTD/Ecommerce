@@ -225,7 +225,7 @@ while an upload dies with a bare `fetch failed`. Check where a request actually
 landed:
 
 ```bash
-curl -si http://localhost:3001/media | head -3
+curl -si http://localhost:4000/media | head -3
 ```
 
 An API response carries `x-request-id` and the API's `content-security-policy`.

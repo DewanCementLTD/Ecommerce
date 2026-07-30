@@ -98,7 +98,7 @@ NODE_ENV=production          # not development — this switches on file logging
 LOG_LEVEL=info               # never debug in production: it logs request headers
 LOG_DIR=/var/log/storeforge
 ADMIN_ORIGINS=https://admin.<PLATFORM_DOMAIN>,https://super.<PLATFORM_DOMAIN>
-STOREFRONT_URL=http://127.0.0.1:3001
+STOREFRONT_URL=http://127.0.0.1:4000
 REVALIDATE_SECRET=<a long random string>
 SENTRY_DSN=                  # optional; see lib/errorTracker.js
 ```

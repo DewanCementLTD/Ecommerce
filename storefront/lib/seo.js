@@ -34,7 +34,7 @@ export async function requestOrigin() {
  * this one is.
  *
  * The port is carried over from the request: in development the primary host is
- * `demo-a.localhost` while the storefront answers on `:3001`, and a canonical
+ * `demo-a.localhost` while the storefront answers on `:4000`, and a canonical
  * pointing at port 80 would be a link to nothing.
  */
 export async function canonicalOrigin(company) {

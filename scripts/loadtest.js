@@ -15,7 +15,7 @@ import autocannon from 'autocannon';
  *    requests go to 127.0.0.1 and carry the store's host explicitly. This is
  *    also exactly what Nginx does in production.
  *
- *   node scripts/loadtest.js [--host demo-a.localhost] [--port 3001]
+ *   node scripts/loadtest.js [--host demo-a.localhost] [--port 4000]
  *                            [--connections 20] [--duration 15] [--api]
  *
  * `--api` points at the Express API (default :8003) instead of the storefront,
@@ -29,7 +29,7 @@ function arg(name, fallback) {
 
 const host = arg('host', 'demo-a.localhost');
 const api = process.argv.includes('--api');
-const port = Number(arg('port', api ? 8003 : 3001));
+const port = Number(arg('port', api ? 8003 : 4000));
 const connections = Number(arg('connections', 20));
 const duration = Number(arg('duration', 15));
 

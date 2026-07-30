@@ -90,7 +90,7 @@ Changes:
   one server), `frame-ancestors 'none'`, and `crossOriginResourcePolicy:
   cross-origin` because product images are served to store domains.
 
-**Evidence:** `curl -sI http://demo-a.localhost:3001/` shows the full header
+**Evidence:** `curl -sI http://demo-a.localhost:4000/` shows the full header
 set; `npm run ui:check` loads the pages in a real browser with them applied and
 reports no console errors, so the CSP is not breaking the app.
 
