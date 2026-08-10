@@ -68,7 +68,9 @@ export function HeroSlider({ banners, settings }) {
                 loading={position === 0 ? 'eager' : 'lazy'}
                 fetchPriority={position === 0 ? 'high' : 'auto'}
                 decoding="async"
-                className="h-full w-full object-cover"
+                className={`h-full w-full object-cover transition-transform duration-[7000ms] ease-out motion-reduce:transition-none ${
+                  active ? 'scale-105' : 'scale-100'
+                }`}
               />
             </picture>
           );
@@ -85,15 +87,22 @@ export function HeroSlider({ banners, settings }) {
               }`}
             >
               {banner.link ? (
-                <Link href={banner.link} tabIndex={active ? 0 : -1} className="block h-full w-full">
+                <Link href={banner.link} tabIndex={active ? 0 : -1} className="block h-full w-full overflow-hidden">
                   {image}
                 </Link>
               ) : (
-                image
+                <div className="h-full w-full overflow-hidden">{image}</div>
               )}
             </div>
           );
         })}
+
+        {count > 1 ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent"
+          />
+        ) : null}
       </div>
 
       {count > 1 ? (

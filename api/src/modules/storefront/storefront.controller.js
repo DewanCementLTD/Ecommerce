@@ -14,8 +14,18 @@ import { AppError } from '../../middleware/error.js';
  */
 export async function getCompanyInfo(req, res, next) {
   try {
-    const { logoMediaId, ...rest } = req.company;
+    const { logoMediaId: companyLogoMediaId, ...rest } = req.company;
     const { settings } = await getSettings({ companyId: req.companyId });
+
+    /**
+     * The client admin's Settings page (self-service, company-scoped) lets an
+     * owner set their own logo, and writes it to `settings.logo_media_id` —
+     * the same key/value store as every other branding field on that page.
+     * `companies.logo_media_id` is a separate column, settable only by a
+     * platform admin, and is kept as the fallback for stores provisioned with
+     * one directly.
+     */
+    const logoMediaId = settings.logo_media_id ? Number(settings.logo_media_id) : companyLogoMediaId;
 
     /**
      * The logo's intrinsic size travels with its URL.

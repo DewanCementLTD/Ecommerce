@@ -219,6 +219,7 @@ function uploadFile(url, token, file, onProgress) {
     form.append('file', file);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
+    xhr.setRequestHeader('X-Storeforge-Api', '1');
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     if (onProgress) {
       xhr.upload.onprogress = (e) => {

@@ -9,6 +9,9 @@ import { ConfirmButton } from '../../components/ConfirmButton.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { SectionForm } from '../../components/sections/SectionForm.jsx';
 import { SectionPreview } from '../../components/sections/SectionPreview.jsx';
+import { RichTextEditor } from '../../components/RichTextEditor.jsx';
+import { MediaPicker } from '../../components/MediaPicker.jsx';
+import { AuthedImage } from '../../components/AuthedImage.jsx';
 
 function flattenCats(nodes, depth = 0) {
   return nodes.flatMap((n) => [{ id: n.id, name: n.name, depth }, ...flattenCats(n.children ?? [], depth + 1)]);
@@ -24,6 +27,9 @@ export function PageSectionsPage() {
   const [newType, setNewType] = useState(SECTION_TYPES[0]);
   const [editingSection, setEditingSection] = useState(null);
   const [editingSettings, setEditingSettings] = useState(null);
+  const [detailsForm, setDetailsForm] = useState(null);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [ogPickerOpen, setOgPickerOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -36,6 +42,15 @@ export function PageSectionsPage() {
         api.listBanners(token),
       ]);
       setPage(pageRes.page);
+      setDetailsForm({
+        title: pageRes.page.title,
+        slug: pageRes.page.slug,
+        content: pageRes.page.content ?? '',
+        metaTitle: pageRes.page.metaTitle ?? '',
+        metaDesc: pageRes.page.metaDesc ?? '',
+        ogImageId: pageRes.page.ogImageId ?? null,
+        isActive: pageRes.page.isActive,
+      });
       setSections(sectionsRes.rows);
       setRefs({ cats: flattenCats(catsRes.tree), colls: collsRes.rows, banners: bannersRes.rows });
     } catch (err) {
@@ -74,6 +89,28 @@ export function PageSectionsPage() {
     }
   }
 
+  async function saveDetails(e) {
+    e.preventDefault();
+    setSavingDetails(true);
+    try {
+      const res = await api.patchPage(token, id, {
+        title: detailsForm.title,
+        ...(page.type === 'home' ? {} : { slug: detailsForm.slug }),
+        content: detailsForm.content || null,
+        metaTitle: detailsForm.metaTitle || null,
+        metaDesc: detailsForm.metaDesc || null,
+        ogImageId: detailsForm.ogImageId,
+        isActive: detailsForm.isActive,
+      });
+      setPage(res.page);
+      toast.success('Page details saved.');
+    } catch (err) {
+      toast.error(err.message ?? 'Failed to save page details.');
+    } finally {
+      setSavingDetails(false);
+    }
+  }
+
   async function addSection(e) {
     e.preventDefault();
     try {
@@ -101,11 +138,130 @@ export function PageSectionsPage() {
     }
   }
 
-  if (loading || !page) return <p className="text-gray-500">Loading…</p>;
+  if (loading || !page || !detailsForm) return <p className="text-gray-500">Loading…</p>;
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold text-gray-900">{page.title}</h1>
+
+      <form onSubmit={saveDetails} className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-gray-900">Page details</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="pageTitle" className="block text-sm font-medium text-gray-700">
+              Title
+            </label>
+            <input
+              id="pageTitle"
+              required
+              value={detailsForm.title}
+              onChange={(e) => setDetailsForm((f) => ({ ...f, title: e.target.value }))}
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="pageSlug" className="block text-sm font-medium text-gray-700">
+              Slug
+            </label>
+            <input
+              id="pageSlug"
+              value={detailsForm.slug}
+              disabled={page.type === 'home'}
+              onChange={(e) => setDetailsForm((f) => ({ ...f, slug: e.target.value }))}
+              placeholder="auto-generated from title"
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Content</label>
+          <p className="text-xs text-gray-400">Freeform body copy for this page — shown above or below its sections, depending on the theme.</p>
+          <div className="mt-1">
+            <RichTextEditor
+              value={detailsForm.content}
+              onChange={(html) => setDetailsForm((f) => ({ ...f, content: html }))}
+            />
+          </div>
+        </div>
+
+        <h2 className="pt-2 text-sm font-semibold text-gray-900">SEO</h2>
+        <div>
+          <label htmlFor="pageMetaTitle" className="block text-sm font-medium text-gray-700">
+            Meta title
+          </label>
+          <input
+            id="pageMetaTitle"
+            value={detailsForm.metaTitle}
+            onChange={(e) => setDetailsForm((f) => ({ ...f, metaTitle: e.target.value }))}
+            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="pageMetaDesc" className="block text-sm font-medium text-gray-700">
+            Meta description
+          </label>
+          <textarea
+            id="pageMetaDesc"
+            rows={2}
+            value={detailsForm.metaDesc}
+            onChange={(e) => setDetailsForm((f) => ({ ...f, metaDesc: e.target.value }))}
+            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          />
+        </div>
+        <div>
+          <span className="block text-sm font-medium text-gray-700">Social share image</span>
+          <div className="mt-1 flex items-center gap-2">
+            <AuthedImage
+              src={detailsForm.ogImageId ? api.mediaUrl(detailsForm.ogImageId, 96) : null}
+              alt=""
+              className="h-14 w-14 rounded border border-gray-200 object-cover"
+              fallback={
+                <span className="flex h-14 w-14 items-center justify-center rounded border border-dashed border-gray-300 text-xs text-gray-400">
+                  None
+                </span>
+              }
+            />
+            <button type="button" onClick={() => setOgPickerOpen(true)} className="text-sm font-medium text-blue-700 hover:underline">
+              Choose
+            </button>
+            {detailsForm.ogImageId && (
+              <button
+                type="button"
+                onClick={() => setDetailsForm((f) => ({ ...f, ogImageId: null }))}
+                className="text-sm text-gray-500 hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {page.type !== 'home' && (
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={detailsForm.isActive === 1}
+              onChange={(e) => setDetailsForm((f) => ({ ...f, isActive: e.target.checked ? 1 : 0 }))}
+            />
+            Active
+          </label>
+        )}
+
+        <button
+          type="submit"
+          disabled={savingDetails}
+          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {savingDetails ? 'Saving…' : 'Save page details'}
+        </button>
+      </form>
+
+      <MediaPicker
+        open={ogPickerOpen}
+        onClose={() => setOgPickerOpen(false)}
+        onSelect={(media) => setDetailsForm((f) => ({ ...f, ogImageId: media.ID }))}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-3">

@@ -3,6 +3,7 @@ import { api } from '../../lib/api.js';
 import { useAuth } from '../../lib/AuthContext.jsx';
 import { AuthedImage } from '../AuthedImage.jsx';
 import { MediaPicker } from '../MediaPicker.jsx';
+import { RichTextEditor } from '../RichTextEditor.jsx';
 
 const inputClass =
   'w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
@@ -17,14 +18,7 @@ export function SectionFieldInput({ field, value, onChange, refs }) {
       return <textarea rows={3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} className={inputClass} />;
 
     case 'html':
-      return (
-        <textarea
-          rows={8}
-          value={value ?? ''}
-          onChange={(e) => onChange(e.target.value)}
-          className={`${inputClass} font-mono text-xs`}
-        />
-      );
+      return <RichTextEditor value={value ?? ''} onChange={onChange} />;
 
     case 'number':
       return (
